@@ -1,13 +1,12 @@
-import "@stdlib/deploy";
 import "@stdlib/ownable";
 import "./messages.tact";
 
-contract JackPot with Deployable, Ownable {
-    const MIN_TON_FOR_STORAGE: Int = ton("0.1");
-    const GAS_CONSUMPTION: Int = ton("0.03");
+contract JackPot with Ownable {
+    const MIN_TON_FOR_STORAGE: Int = ton("0.03");
+    const GAS_CONSUMPTION: Int = ton("0.035");
 
     id: Int as uint64;
-    creator: Address; // Адрес владельца 
+    user: Address; // Адрес владельца 
     owner: Address; // Адрес JackPotMaster
     nft: Address;
     price: Int as coins = 0;
@@ -15,16 +14,34 @@ contract JackPot with Deployable, Ownable {
     timeOfNftReceived: Int as uint32 = 0;
 
 
-    init(id: Int, creator: Address, owner: Address) {
+    init(id: Int, user: Address, owner: Address) {
         self.id = id;
-        self.creator = creator;
+        self.user = user;
         self.owner = owner;
         self.nft = owner;
         //nativePrepareRandom();
     }
 
     fun requireCreator() {
-        require(sender() == self.creator, "Needs creator");
+        require(sender() == self.user, "Needs user");
+    }
+
+    receive(msg: CreateJackPot) {
+        let ctx: Context = context();
+    
+        let msgValue: Int = ctx.value; // Check the gasCost for storage
+        let tonBalanceBeforeMsg: Int = myBalance() - msgValue;
+        let storageFee: Int = self.MIN_TON_FOR_STORAGE - min(tonBalanceBeforeMsg, self.MIN_TON_FOR_STORAGE);
+        msgValue = msgValue - (storageFee + self.GAS_CONSUMPTION);
+
+        require(msgValue > 0, "invalid amount");
+
+        send(SendParameters{
+                to: self.user,
+                value: msgValue,
+                mode:  SendIgnoreErrors,
+                body: Excesses { query_id: msg.query_id }.toCell() //0xd53276db
+            });
     }
 
     receive(msg: GetNftBack) {
@@ -35,8 +52,8 @@ contract JackPot with Deployable, Ownable {
             bounce: true,
             body: Transfer{
                 query_id: 0,   
-                new_owner: self.creator,
-                response_destination: self.creator,
+                new_owner: self.user,
+                response_destination: self.user,
                 custom_payload: emptyCell(),
                 forward_amount: 1,
                 forward_payload: emptySlice() 
@@ -44,24 +61,26 @@ contract JackPot with Deployable, Ownable {
         });
     }
 
-    // receive(msg: CheckNftOwnership) {   
-    //     let ctx: Context = context();
+    receive(msg: CheckNftOwnership) {   
+        let ctx: Context = context();
 
-    //     send(SendParameters{
-    //         to: myAddress(),
-    //         value: ctx.value - self.GAS_CONSUMPTION,
-    //         mode: SendIgnoreErrors,
-    //         bounce: true,
-    //         body: Transfer{
-    //             query_id: 0,   
-    //             new_owner: ctx.sender,
-    //             response_destination: ctx.sender,
-    //             custom_payload: emptyCell(),
-    //             forward_amount: 1,
-    //             forward_payload: emptySlice() 
-    //         }.toCell()
-    //     });
-    // }
+        send(SendParameters{
+            to: myAddress(),
+            value: ctx.value - self.GAS_CONSUMPTION,
+            mode: SendIgnoreErrors,
+            bounce: true,
+            body: Transfer{
+                query_id: 0,   
+                new_owner: ctx.sender,
+                response_destination: ctx.sender,
+                custom_payload: emptyCell(),
+                forward_amount: 1,
+                forward_payload: emptySlice() 
+            }.toCell()
+        });
+
+        self.nft = msg.nft_address;
+    }
 
     // bounced(src: Transfer) {
     //     dump("bounced");

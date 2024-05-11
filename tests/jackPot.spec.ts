@@ -26,8 +26,8 @@ describe('JackPotMaster', () => {
                 bounce: false
             },
             {
-                $$type: 'Deploy',
-                queryId: 0n,
+                $$type: 'CreateJackPot',
+                query_id: 0n,
             }
         );
 

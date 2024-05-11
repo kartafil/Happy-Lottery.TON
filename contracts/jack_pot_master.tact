@@ -38,11 +38,8 @@ contract JackPotMaster with Deployable, Ownable {
         let storageFee: Int = self.MIN_TON_FOR_STORAGE - min(tonBalanceBeforeMsg, self.MIN_TON_FOR_STORAGE);
         msgValue = msgValue - (storageFee + self.GAS_CONSUMPTION);
 
-        self.createJackPotUser(ctx.sender, msgValue);
-    }
 
-    fun createJackPotUser(newUser: Address, msgValue: Int) {
-        let init: StateInit = initOf JackPotUser(newUser, myAddress());
+        let init: StateInit = initOf JackPotUser(ctx.sender, myAddress());
         let address: Address = contractAddress(init);
             
         send(SendParameters{
@@ -52,7 +49,7 @@ contract JackPotMaster with Deployable, Ownable {
             bounce: false,
             code: init.code,
             data: init.data,
-            body: CreateJackPotUser{ query_id: 0, response_destination: newUser }.toCell()
+            body: msg.toCell()
         });
     }
 }

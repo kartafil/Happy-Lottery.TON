@@ -4,7 +4,7 @@ import { JackPot } from '../build/JackPotMaster/tact_JackPot';
 import { NetworkProvider } from '@ton/blueprint';
 import { jackPotMaster_address, jackPotUser_address } from './consts';
 
-export async function run(provider: NetworkProvider) {
+export async function run(provider: NetworkProvider) {   
     const jackPotUser = provider.open(await JackPotUser.fromAddress(jackPotUser_address));
     const jackPot = provider.open(await JackPot.fromInit(0n, jackPotUser.address, jackPotMaster_address));
     

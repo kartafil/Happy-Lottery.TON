@@ -16,7 +16,7 @@ export async function run(provider: NetworkProvider) {
         {
             $$type:'GetNftBack',
             query_id: 0n,
-            nft_address: await nftCollection.getGetNftAddressByIndex(0n) as Address
+            nft_address: await nftCollection.getGetNftAddressByIndex(2n) as Address
         }
     )
 

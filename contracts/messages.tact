@@ -1,6 +1,5 @@
 message CreateJackPotUser {
     query_id: Int as uint64;
-    response_destination: Address;
 }
 
 message CreateJackPot {

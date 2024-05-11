@@ -175,8 +175,8 @@ describe('JackPotMaster', () => {
                 value: toNano('0.5')
             },
             {
-                $$type: 'Deploy',
-                queryId: 0n
+                $$type: 'CreateJackPot',
+                query_id: 0n
             }
         );
     

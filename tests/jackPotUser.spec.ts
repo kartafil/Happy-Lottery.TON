@@ -22,7 +22,7 @@ describe('JackPotMaster', () => {
         const result = await jackPotMaster.send(
             deployer.getSender(),
             {
-                value: toNano('0.15'),
+                value: toNano('1'),
                 bounce: false
             },
             {
@@ -53,13 +53,12 @@ describe('JackPotMaster', () => {
             },
             {
                 $$type: 'CreateJackPotUser',
-                query_id: 0n,
-                response_destination: deployer.address
+                query_id: 0n
             }
         )
 
         expect(transaction.transactions).toHaveTransaction({
-            from: jackPotUser.address,
+            op: 0xd53276db
         })
     });
 

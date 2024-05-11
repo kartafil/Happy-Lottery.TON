@@ -4,8 +4,8 @@ import "./jack_pot.tact";
 import "./messages.tact";
 
 contract JackPotUser with Ownable {
-    const MIN_TON_FOR_STORAGE: Int = ton("0.05");
-    const GAS_CONSUMPTION: Int = ton("0.03");
+    const MIN_TON_FOR_STORAGE: Int = ton("0.03");
+    const GAS_CONSUMPTION: Int = ton("0.035");
 
     owner: Address; // JackPotMaster
     user: Address; // Пользователь JackPotUser
@@ -31,11 +31,12 @@ contract JackPotUser with Ownable {
 
         require(msgValue > 0, "invalid amount");
 
-        dump(self.user);
+        dump(msgValue);
+        dump(myBalance());
         send(SendParameters{
-                to: msg.response_destination,
+                to: self.user,
                 value: msgValue,
-                mode:  0,
+                mode:  SendIgnoreErrors,
                 body: Excesses { query_id: msg.query_id }.toCell() //0xd53276db
             });
         dump("Here ..>>>>>>>");
@@ -51,18 +52,14 @@ contract JackPotUser with Ownable {
 
         msgValue = msgValue - (storageFee + self.GAS_CONSUMPTION);
 
-        self.createJackPot(msgValue);
-    }
-
-    fun createJackPot(msgValue: Int) {
         let init: StateInit = 
         initOf JackPot(
             self.next_jackpot_index,
             self.user,
             self.owner
         );
-            
         let address: Address = contractAddress(init);
+            
         send(SendParameters{
             to: address,
             value: msgValue,
@@ -70,7 +67,7 @@ contract JackPotUser with Ownable {
             bounce: true,
             code: init.code,
             data: init.data,
-            body: Deploy{queryId: 0}.toCell()
+            body: msg.toCell()
         });
 
         self.next_jackpot_index = self.next_jackpot_index + 1;

@@ -11,12 +11,12 @@ export async function run(provider: NetworkProvider) {
     await jackPotMaster.send(
         provider.sender(),
         {
-            value: toNano('0.7'),
+            value: toNano('0.15'),
         },
         {
             $$type: 'CreateJackPotUser',
             query_id: 0n,
-            response_destination: provider.sender().address as Address
+            //response_destination: provider.sender().address as Address
         }
     );
     console.log(jackPotUser.address);
