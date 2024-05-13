@@ -5,7 +5,7 @@ import "./messages.tact";
 
 contract NftCollection with Deployable, OwnableTransferable{
     const minTonsForStorage: Int = ton("0.05");
-    const gasConsumption: Int = ton("0.03");
+    const gasConsumption: Int = ton("0.035");
     next_item_index: Int as uint32 = 0;
     owner: Address;
     royalty_params: RoyaltyParams;                      

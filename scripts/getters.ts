@@ -10,6 +10,6 @@ export async function run(provider: NetworkProvider) {
     const jackPotUser = provider.open(await JackPotUser.fromAddress(jackPotUser_address));
     const jackPot = provider.open(await JackPot.fromAddress(jackPot_address));
 
-    console.log(await jackPotUser.getGetLastJackpotAddress());
+    console.log(await jackPot.getGetNftAddress());
 
 }

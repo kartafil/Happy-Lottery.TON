@@ -6,7 +6,7 @@ import { jackPot_address, my_wallet } from './consts';
 
 export async function run(provider: NetworkProvider) {
     const jackPot = provider.open(await JackPot.fromAddress(jackPot_address)); //EQA4IL4G97HYLO-UFZbLJbQ_b9j0q3wnDHNhCp8CinvNw5s5
-    const nftCollection = provider.open(await NftCollection.fromAddress(Address.parse('kQAdmlNYy-N-lr3BboQbvcNgQPLdDNBC5LF94C09SAp9Vql6')))
+    const nftCollection = provider.open(await NftCollection.fromAddress(Address.parse('kQBryLnQ5LLqboe0qcsJcdxcKxihp-D02B2SxfOgVmXUA7jn')))
 
     const transaction = await jackPot.send(
         provider.sender(),
@@ -16,7 +16,7 @@ export async function run(provider: NetworkProvider) {
         {
             $$type:'GetNftBack',
             query_id: 0n,
-            nft_address: await nftCollection.getGetNftAddressByIndex(2n) as Address
+            nft_address: await nftCollection.getGetNftAddressByIndex(1n) as Address
         }
     )
 

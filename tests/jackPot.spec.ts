@@ -1,22 +1,27 @@
-import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
-import { Address, BitReader, BitString, Cell, Slice, toNano } from '@ton/core';
-import { JackPot } from '../build/JackPotMaster/tact_JackPot';
+import { Blockchain, SandboxContract, SendMessageResult, TreasuryContract, printTransactionFees } from '@ton/sandbox';
+import { Address, BitReader, BitString, Cell, Slice, toNano, Dictionary } from '@ton/core';
+import { JackPot } from '../wrappers/JackPot';
 import { NftCollection } from '../build/NftCollection/tact_NftCollection';
 import { NftItem } from '../build/NftCollection/tact_NftItem';
 import '@ton/test-utils';
+import { randomInt } from 'crypto';
 
-describe('JackPotMaster', () => {
+describe('JackPot', () => {
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
+    let user1: SandboxContract<TreasuryContract>;
+    let user2: SandboxContract<TreasuryContract>;
     let jackPot: SandboxContract<JackPot>;
     let nftCollection: SandboxContract<NftCollection>;
-    let nft: SandboxContract<NftItem>;
-    let addressFromCollection: Address;
+    let nftFromCollection: SandboxContract<NftItem>;
+    let nftAddressFromCollection: Address;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
         deployer = await blockchain.treasury('deployer');
+        user1 = await blockchain.treasury('user1');
+        user2 = await blockchain.treasury('user2');
         jackPot = blockchain.openContract(await JackPot.fromInit(0n, deployer.address, deployer.address));
 
         const deployResult = await jackPot.send(
@@ -64,7 +69,8 @@ describe('JackPotMaster', () => {
             }
         );
 
-        addressFromCollection = await nftCollection.getGetNftAddressByIndex(0n) as Address;
+        nftAddressFromCollection = await nftCollection.getGetNftAddressByIndex(0n) as Address;
+        nftFromCollection = blockchain.openContract(await NftItem.fromAddress(nftAddressFromCollection));
     });
 
     it('should deploy', async () => {
@@ -82,12 +88,289 @@ describe('JackPotMaster', () => {
             {
                 $$type: 'GetNftBack',
                 query_id: 0n,
-                nft_address: addressFromCollection
+                nft_address: nftAddressFromCollection
             }
         );
 
         expect(transactionsResult.transactions).toHaveTransaction({
             op: 0x5fcc3d14
         })
-    })
+    });
+
+    it('should check NFT', async () => {
+
+        const result = await jackPot.send(
+            deployer.getSender(),
+            {
+                value: toNano(0.05)
+            },
+            {
+                $$type: 'CheckNftOwnership',
+                query_id: 0n,
+                nft_address: nftAddressFromCollection
+            }
+        );
+
+        expect(result.transactions).toHaveTransaction({
+            from: nftAddressFromCollection,
+            inMessageBounced: true
+        });
+    });
+
+    it('should accept NFT', async () => {
+        const result = await nftFromCollection.send(
+            deployer.getSender(),
+            {
+                value: toNano('1'),
+            },
+            {
+                $$type: 'Transfer',
+                query_id: 0n,
+                new_owner: jackPot.address,
+                response_destination: deployer.address,
+                custom_payload: null,
+                forward_amount: 1n,
+                forward_payload: Cell.EMPTY
+            }
+        );
+
+        expect(result.transactions).toHaveTransaction({
+            to: jackPot.address,
+            op: 0x05138d91
+        });
+        expect(result.transactions).toHaveTransaction({
+            to: deployer.address,
+            op: 0xd53276db
+        });
+    });
+
+    it('should accept bets', async () => {
+        await nftFromCollection.send(
+            deployer.getSender(),
+            {
+                value: toNano('1'),
+            },
+            {
+                $$type: 'Transfer',
+                query_id: 0n,
+                new_owner: jackPot.address,
+                response_destination: deployer.address,
+                custom_payload: null,
+                forward_amount: 1n,
+                forward_payload: Cell.EMPTY
+            }
+        );
+
+        await jackPot.send(
+            deployer.getSender(),
+            {
+                value: toNano(0.05)
+            },
+            {
+                $$type: 'CheckNftOwnership',
+                query_id: 0n,
+                nft_address: nftAddressFromCollection
+            }
+        );
+
+        const before = await jackPot.getGetCurrentBetsAmmount();
+        const result = await jackPot.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.5')
+            },
+            {
+                $$type: 'Bet',
+                query_id: 0n
+            }
+        );
+        const after = await jackPot.getGetCurrentBetsAmmount();
+        expect(after).toBeGreaterThan(before);
+    });
+
+    it('should finish jackPot', async () => {
+        const dict = Dictionary.empty(Dictionary.Keys.BigInt(32), Dictionary.Values.Address());
+        console.log("init balance")
+        //toNano('0.123991')
+        console.log(await jackPot.getGetCurrentBalance())
+
+        const nftTransfer = await nftFromCollection.send(
+            deployer.getSender(),
+            {
+                value: toNano('1'),
+            },
+            {
+                $$type: 'Transfer',
+                query_id: 0n,
+                new_owner: jackPot.address,
+                response_destination: deployer.address,
+                custom_payload: null,
+                forward_amount: 1n,
+                forward_payload: Cell.EMPTY
+            }
+        );
+
+        await jackPot.send(
+            deployer.getSender(),
+            {
+                value: toNano(0.05)
+            },
+            {
+                $$type: 'CheckNftOwnership',
+                query_id: 0n,
+                nft_address: nftAddressFromCollection
+            }
+        );
+        console.log(await jackPot.getGetCurrentBalance())
+        //toNano('0.139296')
+        await jackPot.send(
+            user1.getSender(),
+            {
+                value: toNano('0.5')
+            },
+            {
+                $$type: 'Bet',
+                query_id: 0n
+            }
+        );
+        console.log(await jackPot.getGetCurrentBetsAmmount());
+        await jackPot.send(
+            user2.getSender(),
+            {
+                value: toNano('0.3')
+            },
+            {
+                $$type: 'Bet',
+                query_id: 0n
+            }
+        );
+        console.log(await jackPot.getGetCurrentBetsAmmount());
+        await jackPot.send(
+            user2.getSender(),
+            {
+                value: toNano('0.8')
+            },
+            {
+                $$type: 'Bet',
+                query_id: 0n
+            }
+        );
+        const bef = await deployer.getBalance();
+        console.log(bef);
+        console.log(await jackPot.getGetCurrentBetsAmmount());
+        const result = await jackPot.send(
+            user1.getSender(),
+            {
+                value: toNano('0.5'),
+                bounce: false
+            },
+            {
+                $$type: 'Bet',
+                query_id: 0n
+            }
+        );
+        console.log(await deployer.getBalance() - bef);
+
+        expect(result.transactions).toHaveTransaction(
+            {
+                from: jackPot.address,
+                op: 0x5fcc3d14
+            }
+        );
+        expect(result.transactions).toHaveTransaction(
+            {
+                from: jackPot.address,
+                to: deployer.address,
+            }
+        );
+    });
+
+    it('should support more users', async () => {
+        const nftTransfer = await nftFromCollection.send(
+            deployer.getSender(),
+            {
+                value: toNano('1'),
+            },
+            {
+                $$type: 'Transfer',
+                query_id: 0n,
+                new_owner: jackPot.address,
+                response_destination: deployer.address,
+                custom_payload: null,
+                forward_amount: 1n,
+                forward_payload: Cell.EMPTY
+            }
+        );
+
+        await jackPot.send(
+            deployer.getSender(),
+            {
+                value: toNano(0.05)
+            },
+            {
+                $$type: 'CheckNftOwnership',
+                query_id: 0n,
+                nft_address: nftAddressFromCollection
+            }
+        );
+
+
+        let users: SandboxContract<TreasuryContract>[] = [];
+        const COUNT = 5000;
+        const GOAL = 1000;
+        const MIN_BET = 0.2;
+
+        for (let i = 0; i < COUNT; i++) {
+            users.push(await blockchain.treasury(i.toString()));
+        }
+        let queue: { user: SandboxContract<TreasuryContract>; bet: bigint }[] = [];
+        for (let i = 0; i < COUNT; i++) {
+            for (let j = 0; j < 1; j++) {
+                queue.push({ user: users[i], bet: toNano(`0.2`) });
+            }
+        }
+
+        for (let i = queue.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [queue[i], queue[j]] = [queue[j], queue[i]];
+        }
+
+        console.log(queue);
+        const bef = await deployer.getBalance();
+        console.log(bef);
+
+        for (let i = 0; i < queue.length && i < GOAL / MIN_BET + 1; i++) {
+            let result = await jackPot.send(
+                queue[i].user.getSender(),
+                {
+                    value: queue[i].bet
+                },
+                {
+                    $$type: 'Bet',
+                    query_id: 0n
+                }
+            );
+            //console.log(await jackPot.getGetCurrentBalance());
+            if (await jackPot.getIsFinished()) {
+                console.log('Finished at ..>> ', i);
+                console.log(await deployer.getBalance() - bef);
+                console.log(await jackPot.getGetParticipants());
+                expect(result.transactions).toHaveTransaction(
+                    {
+                        from: jackPot.address,
+                        op: 0x5fcc3d14
+                    }
+                );
+                expect(result.transactions).toHaveTransaction(
+                    {
+                        from: jackPot.address,
+                        to: deployer.address,
+                    }
+                );
+                //printTransactionFees(result.transactions);
+                break;
+            }
+        }
+
+    });
 });

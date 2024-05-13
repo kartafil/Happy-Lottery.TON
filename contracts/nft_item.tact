@@ -1,8 +1,8 @@
 import "./messages.tact";
 
 contract NftItem {
-    const minTonsForStorage: Int = ton("0.5");
-    const gasConsumption: Int = ton("0.5");
+    const minTonsForStorage: Int = ton("0.03");
+    const gasConsumption: Int = ton("0.05");
 
     collection_address: Address;
     item_index: Int; 
@@ -30,7 +30,7 @@ contract NftItem {
         let tonBalanceBeforeMsg: Int = myBalance() - msgValue;
         let storageFee: Int = self.minTonsForStorage - min(tonBalanceBeforeMsg, self.minTonsForStorage);
         msgValue = msgValue - (storageFee + self.gasConsumption);
-
+        
         require(ctx.sender == self.owner, "not owner");
         if (self.is_initialized == false) {  // Initial Transfer, aka Minting.
             require(msg.custom_payload != null, "custum_payload is not exist");
@@ -49,12 +49,10 @@ contract NftItem {
         } else {
             self.owner = msg.new_owner; // change current owner to the new_owner
             if (msg.forward_amount > 0) {
-                dump("I'm here");
-                dump(msg.forward_amount);
                 send(SendParameters{
                     to: msg.new_owner,
                     value: msg.forward_amount,
-                    mode: SendIgnoreErrors, 
+                    mode: SendPayGasSeparately + SendIgnoreErrors, 
                     bounce: false,
                     body: OwnershipAssigned{
                         query_id: msg.query_id,
@@ -65,6 +63,8 @@ contract NftItem {
                 dump("ownership sent"); 
             }
             msgValue = msgValue - ctx.readForwardFee(); 
+            dump(msgValue);
+            dump(myBalance());
             if (msg.response_destination != null) { 
                 send(SendParameters{ 
                     to: msg.response_destination,

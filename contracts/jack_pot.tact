@@ -2,28 +2,72 @@ import "@stdlib/ownable";
 import "./messages.tact";
 
 contract JackPot with Ownable {
-    const MIN_TON_FOR_STORAGE: Int = ton("0.03");
+    const MIN_TON_FOR_STORAGE: Int = ton("0.1");
     const GAS_CONSUMPTION: Int = ton("0.035");
 
     id: Int as uint64;
     user: Address; // Адрес владельца 
     owner: Address; // Адрес JackPotMaster
-    nft: Address;
-    price: Int as coins = 0;
+    winner: Address? = null;
+    nft: Address? = null;
+    totalBets: Int as coins = 0;
+    goalPrice: Int as coins = ton("1000");
+    minBet: Int as coins = ton("0.2");
     nftReceived: Bool = false;
+    isStarted: Bool = false;
+    isFinished: Bool = false;
     timeOfNftReceived: Int as uint32 = 0;
+    nextParticipantId: Int as uint32 = 0;
+    participants: map<Int, Address>;
+    bets: map<Address, Int>;
 
 
     init(id: Int, user: Address, owner: Address) {
         self.id = id;
         self.user = user;
         self.owner = owner;
-        self.nft = owner;
+        self.bets = emptyMap();
+        self.participants = emptyMap();
         //nativePrepareRandom();
     }
 
     fun requireCreator() {
         require(sender() == self.user, "Needs user");
+    }
+
+    fun requireNft() {
+        require(self.nft != null, "Contract can't found NFT");
+    }
+
+    fun finish(ctx: Context) {
+        self.isFinished = true;
+
+        let i: Int = 0;
+        let amount: Int = 0;
+        nativeRandomize(now() / myBalance() + self.nextParticipantId);
+        let winner: Int = random(0, self.goalPrice);
+        dump(winner);
+        while(self.winner == null && i < self.nextParticipantId) {
+            let participant: Address = self.participants.get(i)!!;
+            amount = amount + self.bets.get(participant)!!;
+            if (amount >= winner) {
+                self.winner = self.participants.get(i)!!;       
+            }
+            i = i + 1;
+        }
+        dump(self.winner);
+        dump(myBalance());
+        
+        dump(ctx.readForwardFee());
+        send(SendParameters {
+            to: myAddress(),
+            value: 0,
+            mode: SendRemainingBalance + SendIgnoreErrors,
+            body: FinishJackPot{
+                query_id: 0
+            }.toCell(),
+            bounce: false
+        });
     }
 
     receive(msg: CreateJackPot) {
@@ -42,6 +86,63 @@ contract JackPot with Ownable {
                 mode:  SendIgnoreErrors,
                 body: Excesses { query_id: msg.query_id }.toCell() //0xd53276db
             });
+    }
+
+    receive(msg: Bet) {
+        let ctx: Context = context();
+        require(!self.isFinished, "Jackpot is finished");
+        require(self.nft != null, "Contract doesn't have nft");
+        require(ctx.value >= self.minBet, "Not enough TON to make bet");
+        if (self.bets.get(ctx.sender) == null) {
+            self.participants.set(self.nextParticipantId, ctx.sender);
+            self.nextParticipantId = self.nextParticipantId + 1;
+            self.bets.set(ctx.sender, ctx.value);
+        } 
+        else {
+            self.bets.set(ctx.sender, self.bets.get(ctx.sender)!! + ctx.value);
+        }
+
+        self.totalBets = self.totalBets + ctx.value;
+
+        if(self.totalBets >= self.goalPrice) {
+            dump("finish");
+            self.finish(ctx);
+        }
+    }
+
+    receive(msg: FinishJackPot) {
+        if (self.isFinished) {
+            let amountForUser: Int = myBalance() / 100 * 90 - self.GAS_CONSUMPTION * 2 - ton("0.1");
+            let amountForOwner: Int = myBalance() - amountForUser - self.GAS_CONSUMPTION - self.MIN_TON_FOR_STORAGE;
+            send(SendParameters {
+                to: self.user,
+                value: amountForUser,
+                mode: 0,
+                body: "JackPot payment".asComment(),
+                bounce: false
+            });
+            send(SendParameters {
+                to: self.owner,
+                value: amountForOwner,
+                mode: 0,
+                body: "JackPot payment".asComment(),
+                bounce: false
+            });
+            send(SendParameters{
+                to: self.nft!!,
+                value: ton("0.1"),
+                mode: SendIgnoreErrors,
+                bounce: true,
+                body: Transfer{
+                query_id: 0,   
+                new_owner: self.winner!!,
+                response_destination: self.user,
+                custom_payload: emptyCell(),
+                forward_amount: 1,
+                forward_payload: emptySlice() 
+                }.toCell()
+            });
+        }
     }
 
     receive(msg: GetNftBack) {
@@ -65,14 +166,14 @@ contract JackPot with Ownable {
         let ctx: Context = context();
 
         send(SendParameters{
-            to: myAddress(),
+            to: msg.nft_address,
             value: ctx.value - self.GAS_CONSUMPTION,
             mode: SendIgnoreErrors,
             bounce: true,
             body: Transfer{
                 query_id: 0,   
-                new_owner: ctx.sender,
-                response_destination: ctx.sender,
+                new_owner: myAddress(),
+                response_destination: myAddress(),
                 custom_payload: emptyCell(),
                 forward_amount: 1,
                 forward_payload: emptySlice() 
@@ -80,17 +181,37 @@ contract JackPot with Ownable {
         });
 
         self.nft = msg.nft_address;
+        dump(now());
     }
 
-    // bounced(src: Transfer) {
-    //     dump("bounced");
-    // }
+    bounced(src: bounced<Transfer>) {
+//finish
+        dump(now());
+        dump("bounced");
+        self.nft = null;
+    }
 
     receive(msg: OwnershipAssigned) {
         self.nft = sender();
     }
 
-    get fun get_nft_address(): Address {
+    get fun get_nft_address(): Address? {
         return self.nft;
+    }
+
+    get fun is_finished(): Bool {
+        return self.isFinished;
+    }
+
+    get fun get_current_bets_ammount(): Int {
+        return self.totalBets;
+    }
+
+    get fun get_current_balance(): Int {
+        return myBalance();
+    }
+
+    get fun getParticipants(): map<Int, Address> {
+        return self.participants;
     }
 }
