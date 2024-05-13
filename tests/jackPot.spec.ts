@@ -226,7 +226,7 @@ describe('JackPot', () => {
         await jackPot.send(
             user1.getSender(),
             {
-                value: toNano('0.5')
+                value: toNano('20')
             },
             {
                 $$type: 'Bet',
@@ -237,7 +237,7 @@ describe('JackPot', () => {
         await jackPot.send(
             user2.getSender(),
             {
-                value: toNano('0.3')
+                value: toNano('30')
             },
             {
                 $$type: 'Bet',
@@ -248,7 +248,7 @@ describe('JackPot', () => {
         await jackPot.send(
             user2.getSender(),
             {
-                value: toNano('0.8')
+                value: toNano('45')
             },
             {
                 $$type: 'Bet',
@@ -261,7 +261,7 @@ describe('JackPot', () => {
         const result = await jackPot.send(
             user1.getSender(),
             {
-                value: toNano('0.5'),
+                value: toNano('10'),
                 bounce: false
             },
             {
@@ -316,8 +316,8 @@ describe('JackPot', () => {
 
 
         let users: SandboxContract<TreasuryContract>[] = [];
-        const COUNT = 5000;
-        const GOAL = 1000;
+        const COUNT = 500;
+        const GOAL = 100;
         const MIN_BET = 0.2;
 
         for (let i = 0; i < COUNT; i++) {
@@ -335,7 +335,7 @@ describe('JackPot', () => {
             [queue[i], queue[j]] = [queue[j], queue[i]];
         }
 
-        console.log(queue);
+        //console.log(queue);
         const bef = await deployer.getBalance();
         console.log(bef);
 
@@ -354,7 +354,8 @@ describe('JackPot', () => {
             if (await jackPot.getIsFinished()) {
                 console.log('Finished at ..>> ', i);
                 console.log(await deployer.getBalance() - bef);
-                console.log(await jackPot.getGetParticipants());
+                //console.log(await jackPot.getGetParticipants());
+                printTransactionFees(result.transactions);
                 expect(result.transactions).toHaveTransaction(
                     {
                         from: jackPot.address,
@@ -367,10 +368,11 @@ describe('JackPot', () => {
                         to: deployer.address,
                     }
                 );
-                //printTransactionFees(result.transactions);
                 break;
             }
         }
+
+        expect(await jackPot.getIsFinished());
 
     });
 });

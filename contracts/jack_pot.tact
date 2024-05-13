@@ -11,7 +11,7 @@ contract JackPot with Ownable {
     winner: Address? = null;
     nft: Address? = null;
     totalBets: Int as coins = 0;
-    goalPrice: Int as coins = ton("1000");
+    goalPrice: Int as coins = ton("10");
     minBet: Int as coins = ton("0.2");
     nftReceived: Bool = false;
     isStarted: Bool = false;
@@ -88,7 +88,7 @@ contract JackPot with Ownable {
             });
     }
 
-    receive(msg: Bet) {
+    receive("bet") {
         let ctx: Context = context();
         require(!self.isFinished, "Jackpot is finished");
         require(self.nft != null, "Contract doesn't have nft");
@@ -164,7 +164,7 @@ contract JackPot with Ownable {
 
     receive(msg: CheckNftOwnership) {   
         let ctx: Context = context();
-
+        
         send(SendParameters{
             to: msg.nft_address,
             value: ctx.value - self.GAS_CONSUMPTION,
@@ -175,7 +175,7 @@ contract JackPot with Ownable {
                 new_owner: myAddress(),
                 response_destination: myAddress(),
                 custom_payload: emptyCell(),
-                forward_amount: 1,
+                forward_amount: 0,
                 forward_payload: emptySlice() 
             }.toCell()
         });

@@ -1,8 +1,9 @@
 import { toNano } from '@ton/core';
 import { JackPotMaster } from '../wrappers/JackPotMaster';
-import { NetworkProvider } from '@ton/blueprint';
+import { NetworkProvider, createNetworkProvider } from '@ton/blueprint';
 
 export async function run(provider: NetworkProvider) {
+    
     const jackPotMaster = provider.open(await JackPotMaster.fromInit(0n));
 
     await jackPotMaster.send(
