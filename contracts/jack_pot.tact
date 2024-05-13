@@ -11,15 +11,14 @@ contract JackPot with Ownable {
     winner: Address? = null;
     nft: Address? = null;
     totalBets: Int as coins = 0;
-    goalPrice: Int as coins = ton("10");
+    goalPrice: Int as coins = ton("100");
     minBet: Int as coins = ton("0.2");
     nftReceived: Bool = false;
     isStarted: Bool = false;
     isFinished: Bool = false;
     timeOfNftReceived: Int as uint32 = 0;
-    nextParticipantId: Int as uint32 = 0;
-    participants: map<Int, Address>;
-    bets: map<Address, Int>;
+    nextBetId: Int as uint32 = 0;
+    bets: map<Int, Bet>;
 
 
     init(id: Int, user: Address, owner: Address) {
@@ -27,7 +26,6 @@ contract JackPot with Ownable {
         self.user = user;
         self.owner = owner;
         self.bets = emptyMap();
-        self.participants = emptyMap();
         //nativePrepareRandom();
     }
 
@@ -39,19 +37,21 @@ contract JackPot with Ownable {
         require(self.nft != null, "Contract can't found NFT");
     }
 
-    fun finish(ctx: Context) {
+    fun finish() {
         self.isFinished = true;
 
         let i: Int = 0;
         let amount: Int = 0;
         nativeRandomize(now() / myBalance() + self.nextParticipantId);
-        let winner: Int = random(0, self.goalPrice);
-        dump(winner);
+
+        let winNumber: Int = random(0, self.goalPrice);
+
+
+        dump(winNumber);
         while(self.winner == null && i < self.nextParticipantId) {
-            let participant: Address = self.participants.get(i)!!;
-            amount = amount + self.bets.get(participant)!!;
-            if (amount >= winner) {
-                self.winner = self.participants.get(i)!!;       
+            amount = amount + self.bets.get(i)!!.amount;
+            if (amount >= winNumber) {
+                self.winner = self.bets.get(i)!!.address;       
             }
             i = i + 1;
         }
@@ -93,20 +93,14 @@ contract JackPot with Ownable {
         require(!self.isFinished, "Jackpot is finished");
         require(self.nft != null, "Contract doesn't have nft");
         require(ctx.value >= self.minBet, "Not enough TON to make bet");
-        if (self.bets.get(ctx.sender) == null) {
-            self.participants.set(self.nextParticipantId, ctx.sender);
-            self.nextParticipantId = self.nextParticipantId + 1;
-            self.bets.set(ctx.sender, ctx.value);
-        } 
-        else {
-            self.bets.set(ctx.sender, self.bets.get(ctx.sender)!! + ctx.value);
-        }
+        
+        self.bets.set(self.nextBetId, Bet{ address: ctx.sender, amount: ctx.value });
 
         self.totalBets = self.totalBets + ctx.value;
 
         if(self.totalBets >= self.goalPrice) {
             dump("finish");
-            self.finish(ctx);
+            self.finish();
         }
     }
 

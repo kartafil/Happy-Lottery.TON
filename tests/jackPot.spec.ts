@@ -316,9 +316,9 @@ describe('JackPot', () => {
 
 
         let users: SandboxContract<TreasuryContract>[] = [];
-        const COUNT = 500;
+        const COUNT = 100;
         const GOAL = 100;
-        const MIN_BET = 0.2;
+        const MIN_BET = 1;
 
         for (let i = 0; i < COUNT; i++) {
             users.push(await blockchain.treasury(i.toString()));
@@ -326,7 +326,7 @@ describe('JackPot', () => {
         let queue: { user: SandboxContract<TreasuryContract>; bet: bigint }[] = [];
         for (let i = 0; i < COUNT; i++) {
             for (let j = 0; j < 1; j++) {
-                queue.push({ user: users[i], bet: toNano(`0.2`) });
+                queue.push({ user: users[i], bet: toNano(`1`) });
             }
         }
 

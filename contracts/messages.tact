@@ -1,3 +1,8 @@
+struct Bet {
+    address: Address;
+    amount: Int as coins;
+}
+
 message CreateJackPotUser {
     query_id: Int as uint64;
 }
