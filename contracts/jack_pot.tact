@@ -42,13 +42,13 @@ contract JackPot with Ownable {
 
         let i: Int = 0;
         let amount: Int = 0;
-        nativeRandomize(now() / myBalance() + self.nextParticipantId);
+        nativeRandomize(now() / myBalance() + self.nextBetId);
 
         let winNumber: Int = random(0, self.goalPrice);
 
 
         dump(winNumber);
-        while(self.winner == null && i < self.nextParticipantId) {
+        while(self.winner == null && i < self.nextBetId) {
             amount = amount + self.bets.get(i)!!.amount;
             if (amount >= winNumber) {
                 self.winner = self.bets.get(i)!!.address;       
@@ -57,8 +57,6 @@ contract JackPot with Ownable {
         }
         dump(self.winner);
         dump(myBalance());
-        
-        dump(ctx.readForwardFee());
         send(SendParameters {
             to: myAddress(),
             value: 0,
@@ -100,6 +98,7 @@ contract JackPot with Ownable {
 
         if(self.totalBets >= self.goalPrice) {
             dump("finish");
+            dump(ctx.readForwardFee());
             self.finish();
         }
     }
@@ -205,7 +204,7 @@ contract JackPot with Ownable {
         return myBalance();
     }
 
-    get fun getParticipants(): map<Int, Address> {
-        return self.participants;
+    get fun get_bets(): map<Int, Bet> {
+        return self.bets;
     }
 }

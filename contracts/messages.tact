@@ -21,10 +21,6 @@ message CheckNftOwnership {
     nft_address: Address;
 }
 
-message Bet {
-    query_id: Int as uint64;
-}
-
 message FinishJackPot {
     query_id: Int as uint64;
 }
