@@ -179,10 +179,7 @@ describe('JackPot', () => {
             {
                 value: toNano('0.5')
             },
-            {
-                $$type: 'Bet',
-                query_id: 0n
-            }
+            "bet"
         );
         const after = await jackPot.getGetCurrentBetsAmmount();
         expect(after).toBeGreaterThan(before);
@@ -228,10 +225,7 @@ describe('JackPot', () => {
             {
                 value: toNano('20')
             },
-            {
-                $$type: 'Bet',
-                query_id: 0n
-            }
+            "bet"
         );
         console.log(await jackPot.getGetCurrentBetsAmmount());
         await jackPot.send(
@@ -239,10 +233,7 @@ describe('JackPot', () => {
             {
                 value: toNano('30')
             },
-            {
-                $$type: 'Bet',
-                query_id: 0n
-            }
+            "bet"
         );
         console.log(await jackPot.getGetCurrentBetsAmmount());
         await jackPot.send(
@@ -250,10 +241,7 @@ describe('JackPot', () => {
             {
                 value: toNano('45')
             },
-            {
-                $$type: 'Bet',
-                query_id: 0n
-            }
+            "bet"
         );
         const bef = await deployer.getBalance();
         console.log(bef);
@@ -264,10 +252,7 @@ describe('JackPot', () => {
                 value: toNano('10'),
                 bounce: false
             },
-            {
-                $$type: 'Bet',
-                query_id: 0n
-            }
+            "bet"
         );
         console.log(await deployer.getBalance() - bef);
 
@@ -345,11 +330,11 @@ describe('JackPot', () => {
                 {
                     value: queue[i].bet
                 },
-                {
-                    $$type: 'Bet',
-                    query_id: 0n
-                }
+                "bet"
             );
+            if (i === 0 || i === queue.length - 2) {
+                printTransactionFees(result.transactions);
+            }
             //console.log(await jackPot.getGetCurrentBalance());
             if (await jackPot.getIsFinished()) {
                 console.log('Finished at ..>> ', i);

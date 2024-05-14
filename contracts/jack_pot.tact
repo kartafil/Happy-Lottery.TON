@@ -46,8 +46,6 @@ contract JackPot with Ownable {
 
         let winNumber: Int = random(0, self.goalPrice);
 
-
-        dump(winNumber);
         while(self.winner == null && i < self.nextBetId) {
             amount = amount + self.bets.get(i)!!.amount;
             if (amount >= winNumber) {
@@ -55,7 +53,6 @@ contract JackPot with Ownable {
             }
             i = i + 1;
         }
-        dump(self.winner);
         dump(myBalance());
         send(SendParameters {
             to: myAddress(),
@@ -93,6 +90,7 @@ contract JackPot with Ownable {
         require(ctx.value >= self.minBet, "Not enough TON to make bet");
         
         self.bets.set(self.nextBetId, Bet{ address: ctx.sender, amount: ctx.value });
+        self.nextBetId = self.nextBetId + 1;
 
         self.totalBets = self.totalBets + ctx.value;
 
@@ -104,20 +102,21 @@ contract JackPot with Ownable {
     }
 
     receive(msg: FinishJackPot) {
+        dump(self.winner);
         if (self.isFinished) {
-            let amountForUser: Int = myBalance() / 100 * 90 - self.GAS_CONSUMPTION * 2 - ton("0.1");
+            let amountForUser: Int = myBalance() / 100 * 99 - self.GAS_CONSUMPTION * 2 - ton("0.1");
             let amountForOwner: Int = myBalance() - amountForUser - self.GAS_CONSUMPTION - self.MIN_TON_FOR_STORAGE;
             send(SendParameters {
                 to: self.user,
                 value: amountForUser,
-                mode: 0,
+                mode: SendIgnoreErrors,
                 body: "JackPot payment".asComment(),
                 bounce: false
             });
             send(SendParameters {
                 to: self.owner,
                 value: amountForOwner,
-                mode: 0,
+                mode: SendIgnoreErrors,
                 body: "JackPot payment".asComment(),
                 bounce: false
             });
