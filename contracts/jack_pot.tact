@@ -113,13 +113,6 @@ contract JackPot with Ownable {
                 body: "JackPot payment".asComment(),
                 bounce: false
             });
-            send(SendParameters {
-                to: self.owner,
-                value: amountForOwner,
-                mode: SendIgnoreErrors,
-                body: "JackPot payment".asComment(),
-                bounce: false
-            });
             send(SendParameters{
                 to: self.nft!!,
                 value: ton("0.1"),
@@ -128,11 +121,18 @@ contract JackPot with Ownable {
                 body: Transfer{
                 query_id: 0,   
                 new_owner: self.winner!!,
-                response_destination: self.user,
+                response_destination: self.owner,
                 custom_payload: emptyCell(),
                 forward_amount: 1,
                 forward_payload: emptySlice() 
                 }.toCell()
+            });
+            send(SendParameters {
+                to: self.owner,
+                value: 0,
+                mode: SendRemainingBalance+ SendIgnoreErrors,
+                body: "JackPot payment".asComment(),
+                bounce: false
             });
         }
     }
