@@ -28,7 +28,6 @@ contract JackPot with Ownable {
         self.owner = owner;
         self.bets = emptyMap();
         self.participants = emptyMap();
-        //nativePrepareRandom();
     }
 
     fun requireCreator() {
@@ -46,7 +45,6 @@ contract JackPot with Ownable {
         let amount: Int = 0;
         nativeRandomize(now() / myBalance() + self.nextParticipantId);
         let winner: Int = random(0, self.goalPrice);
-        dump(winner);
         while(self.winner == null && i < self.nextParticipantId) {
             let participant: Address = self.participants.get(i)!!;
             amount = amount + self.bets.get(participant)!!;
@@ -55,10 +53,7 @@ contract JackPot with Ownable {
             }
             i = i + 1;
         }
-        dump(self.winner);
-        dump(myBalance());
-        
-        dump(ctx.readForwardFee());
+
         send(SendParameters {
             to: myAddress(),
             value: 0,
@@ -105,7 +100,6 @@ contract JackPot with Ownable {
         self.totalBets = self.totalBets + ctx.value;
 
         if(self.totalBets >= self.goalPrice) {
-            dump("finish");
             self.finish(ctx);
         }
     }
@@ -142,7 +136,7 @@ contract JackPot with Ownable {
                 forward_payload: emptySlice() 
                 }.toCell()
             });
-        }
+                    }
     }
 
     receive(msg: GetNftBack) {
