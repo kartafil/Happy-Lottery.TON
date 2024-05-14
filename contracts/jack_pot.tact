@@ -11,7 +11,7 @@ contract JackPot with Ownable {
     winner: Address? = null;
     nft: Address? = null;
     totalBets: Int as coins = 0;
-    goalPrice: Int as coins = ton("10");
+    goalPrice: Int as coins = ton("100");
     minBet: Int as coins = ton("0.2");
     nftReceived: Bool = false;
     isStarted: Bool = false;
