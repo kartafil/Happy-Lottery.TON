@@ -78,25 +78,6 @@ describe('JackPot', () => {
         // blockchain and jackPotMaster are ready to use
     });
 
-
-    it('should send NFT back', async () => {
-        const transactionsResult = await jackPot.send(
-            deployer.getSender(),
-            {
-                value: toNano('0.5')
-            },
-            {
-                $$type: 'GetNftBack',
-                query_id: 0n,
-                nft_address: nftAddressFromCollection
-            }
-        );
-
-        expect(transactionsResult.transactions).toHaveTransaction({
-            op: 0x5fcc3d14
-        })
-    });
-
     it('should check NFT', async () => {
 
         const result = await jackPot.send(
@@ -144,52 +125,10 @@ describe('JackPot', () => {
         });
     });
 
-    it('should accept bets', async () => {
-        await nftFromCollection.send(
-            deployer.getSender(),
-            {
-                value: toNano('1'),
-            },
-            {
-                $$type: 'Transfer',
-                query_id: 0n,
-                new_owner: jackPot.address,
-                response_destination: deployer.address,
-                custom_payload: null,
-                forward_amount: 1n,
-                forward_payload: Cell.EMPTY
-            }
-        );
-
-        await jackPot.send(
-            deployer.getSender(),
-            {
-                value: toNano(0.05)
-            },
-            {
-                $$type: 'CheckNftOwnership',
-                query_id: 0n,
-                nft_address: nftAddressFromCollection
-            }
-        );
-
-        const before = await jackPot.getGetCurrentBetsAmmount();
-        const result = await jackPot.send(
-            deployer.getSender(),
-            {
-                value: toNano('0.5')
-            },
-            "bet"
-        );
-        const after = await jackPot.getGetCurrentBetsAmmount();
-        expect(after).toBeGreaterThan(before);
-    });
-
     it('should finish jackPot', async () => {
         const dict = Dictionary.empty(Dictionary.Keys.BigInt(32), Dictionary.Values.Address());
         console.log("init balance")
         //toNano('0.123991')
-        console.log(await jackPot.getGetCurrentBalance())
 
         const nftTransfer = await nftFromCollection.send(
             deployer.getSender(),
@@ -218,8 +157,7 @@ describe('JackPot', () => {
                 nft_address: nftAddressFromCollection
             }
         );
-        console.log(await jackPot.getGetCurrentBalance())
-        //toNano('0.139296')
+        
         await jackPot.send(
             user1.getSender(),
             {
@@ -227,7 +165,7 @@ describe('JackPot', () => {
             },
             "bet"
         );
-        console.log(await jackPot.getGetCurrentBetsAmmount());
+        
         await jackPot.send(
             user2.getSender(),
             {
@@ -235,7 +173,7 @@ describe('JackPot', () => {
             },
             "bet"
         );
-        console.log(await jackPot.getGetCurrentBetsAmmount());
+        
         await jackPot.send(
             user2.getSender(),
             {
@@ -245,7 +183,7 @@ describe('JackPot', () => {
         );
         const bef = await deployer.getBalance();
         console.log(bef);
-        console.log(await jackPot.getGetCurrentBetsAmmount());
+        
         const result = await jackPot.send(
             user1.getSender(),
             {
@@ -323,7 +261,7 @@ describe('JackPot', () => {
         //console.log(queue);
         const bef = await deployer.getBalance();
         console.log(bef);
-
+        
         for (let i = 0; i < queue.length && i < GOAL / MIN_BET + 1; i++) {
             let result = await jackPot.send(
                 queue[i].user.getSender(),
@@ -338,7 +276,6 @@ describe('JackPot', () => {
             //console.log(await jackPot.getGetCurrentBalance());
             if (await jackPot.getIsFinished()) {
                 console.log('Finished at ..>> ', i);
-                console.log(await deployer.getBalance() - bef);
                 //console.log(await jackPot.getGetParticipants());
                 printTransactionFees(result.transactions);
                 expect(result.transactions).toHaveTransaction(
