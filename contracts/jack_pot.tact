@@ -13,13 +13,9 @@ contract JackPot with Ownable {
     totalBets: Int as coins = 0;
     goalPrice: Int as coins = ton("100");
     minBet: Int as coins = ton("0.2");
-    nftReceived: Bool = false;
-    isStarted: Bool = false;
     isFinished: Bool = false;
-    timeOfNftReceived: Int as uint32 = 0;
-    nextParticipantId: Int as uint32 = 0;
-    participants: map<Int, Address>;
-    bets: map<Address, Int>;
+    nextBetId: Int as uint32 = 0;
+    bets: map<Int, Bet>;
 
 
     init(id: Int, user: Address, owner: Address) {
@@ -27,29 +23,22 @@ contract JackPot with Ownable {
         self.user = user;
         self.owner = owner;
         self.bets = emptyMap();
-        self.participants = emptyMap();
     }
 
-    fun requireCreator() {
-        require(sender() == self.user, "Needs user");
-    }
-
-    fun requireNft() {
-        require(self.nft != null, "Contract can't found NFT");
-    }
-
-    fun finish(ctx: Context) {
+    fun finish() {
         self.isFinished = true;
 
         let i: Int = 0;
         let amount: Int = 0;
-        nativeRandomize(now() / myBalance() + self.nextParticipantId);
-        let winner: Int = random(0, self.goalPrice);
-        while(self.winner == null && i < self.nextParticipantId) {
-            let participant: Address = self.participants.get(i)!!;
-            amount = amount + self.bets.get(participant)!!;
-            if (amount >= winner) {
-                self.winner = self.participants.get(i)!!;       
+        nativeRandomize(now() / myBalance() + self.nextBetId);
+
+        let winNumber: Int = random(0, self.goalPrice);
+
+        while(self.winner == null && i < self.nextBetId) {
+            amount = amount + self.bets.get(i)!!.amount;
+            if (amount >= winNumber) {
+                self.winner = self.bets.get(i)!!.address;
+                self.bets = emptyMap();      
             }
             i = i + 1;
         }
@@ -88,36 +77,26 @@ contract JackPot with Ownable {
         require(!self.isFinished, "Jackpot is finished");
         require(self.nft != null, "Contract doesn't have nft");
         require(ctx.value >= self.minBet, "Not enough TON to make bet");
-        if (self.bets.get(ctx.sender) == null) {
-            self.participants.set(self.nextParticipantId, ctx.sender);
-            self.nextParticipantId = self.nextParticipantId + 1;
-            self.bets.set(ctx.sender, ctx.value);
-        } 
-        else {
-            self.bets.set(ctx.sender, self.bets.get(ctx.sender)!! + ctx.value);
-        }
+        
+        self.bets.set(self.nextBetId, Bet{ address: ctx.sender, amount: ctx.value });
+        self.nextBetId = self.nextBetId + 1;
 
         self.totalBets = self.totalBets + ctx.value;
 
         if(self.totalBets >= self.goalPrice) {
-            self.finish(ctx);
+            dump("finish");
+            self.finish();
         }
     }
 
     receive(msg: FinishJackPot) {
+        dump(self.winner);
         if (self.isFinished) {
             let amountForUser: Int = myBalance() / 100 * 99 - self.GAS_CONSUMPTION * 2 - ton("0.1");
             let amountForOwner: Int = myBalance() - amountForUser - self.GAS_CONSUMPTION - self.MIN_TON_FOR_STORAGE;
             send(SendParameters {
                 to: self.user,
                 value: amountForUser,
-                mode: SendIgnoreErrors,
-                body: "JackPot payment".asComment(),
-                bounce: false
-            });
-            send(SendParameters {
-                to: self.owner,
-                value: amountForOwner,
                 mode: SendIgnoreErrors,
                 body: "JackPot payment".asComment(),
                 bounce: false
@@ -130,13 +109,20 @@ contract JackPot with Ownable {
                 body: Transfer{
                 query_id: 0,   
                 new_owner: self.winner!!,
-                response_destination: self.user,
+                response_destination: self.owner,
                 custom_payload: emptyCell(),
                 forward_amount: 1,
                 forward_payload: emptySlice() 
                 }.toCell()
             });
-                    }
+            send(SendParameters {
+                to: self.owner,
+                value: 0,
+                mode: SendRemainingBalance+ SendIgnoreErrors,
+                body: "JackPot payment".asComment(),
+                bounce: false
+            });
+        }
     }
 
     receive(msg: GetNftBack) {
@@ -175,13 +161,9 @@ contract JackPot with Ownable {
         });
 
         self.nft = msg.nft_address;
-        dump(now());
     }
 
     bounced(src: bounced<Transfer>) {
-//finish
-        dump(now());
-        dump("bounced");
         self.nft = null;
     }
 
@@ -199,13 +181,5 @@ contract JackPot with Ownable {
 
     get fun get_current_bets_ammount(): Int {
         return self.totalBets;
-    }
-
-    get fun get_current_balance(): Int {
-        return myBalance();
-    }
-
-    get fun getParticipants(): map<Int, Address> {
-        return self.participants;
     }
 }
