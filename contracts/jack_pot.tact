@@ -13,10 +13,7 @@ contract JackPot with Ownable {
     totalBets: Int as coins = 0;
     goalPrice: Int as coins = ton("100");
     minBet: Int as coins = ton("0.2");
-    nftReceived: Bool = false;
-    isStarted: Bool = false;
     isFinished: Bool = false;
-    timeOfNftReceived: Int as uint32 = 0;
     nextBetId: Int as uint32 = 0;
     bets: map<Int, Bet>;
 
@@ -26,15 +23,6 @@ contract JackPot with Ownable {
         self.user = user;
         self.owner = owner;
         self.bets = emptyMap();
-        //nativePrepareRandom();
-    }
-
-    fun requireCreator() {
-        require(sender() == self.user, "Needs user");
-    }
-
-    fun requireNft() {
-        require(self.nft != null, "Contract can't found NFT");
     }
 
     fun finish() {
@@ -49,11 +37,12 @@ contract JackPot with Ownable {
         while(self.winner == null && i < self.nextBetId) {
             amount = amount + self.bets.get(i)!!.amount;
             if (amount >= winNumber) {
-                self.winner = self.bets.get(i)!!.address;       
+                self.winner = self.bets.get(i)!!.address;
+                self.bets = emptyMap();      
             }
             i = i + 1;
         }
-        dump(myBalance());
+
         send(SendParameters {
             to: myAddress(),
             value: 0,
@@ -96,7 +85,6 @@ contract JackPot with Ownable {
 
         if(self.totalBets >= self.goalPrice) {
             dump("finish");
-            dump(ctx.readForwardFee());
             self.finish();
         }
     }
@@ -173,13 +161,9 @@ contract JackPot with Ownable {
         });
 
         self.nft = msg.nft_address;
-        dump(now());
     }
 
     bounced(src: bounced<Transfer>) {
-//finish
-        dump(now());
-        dump("bounced");
         self.nft = null;
     }
 
@@ -197,13 +181,5 @@ contract JackPot with Ownable {
 
     get fun get_current_bets_ammount(): Int {
         return self.totalBets;
-    }
-
-    get fun get_current_balance(): Int {
-        return myBalance();
-    }
-
-    get fun get_bets(): map<Int, Bet> {
-        return self.bets;
     }
 }
