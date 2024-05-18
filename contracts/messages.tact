@@ -1,3 +1,8 @@
+struct Bet {
+    address: Address;
+    amount: Int as coins;
+}
+
 message CreateJackPotUser {
     query_id: Int as uint64;
 }
@@ -14,10 +19,6 @@ message GetNftBack {
 message CheckNftOwnership {
     query_id: Int as uint64;
     nft_address: Address;
-}
-
-message Bet {
-    query_id: Int as uint64;
 }
 
 message FinishJackPot {

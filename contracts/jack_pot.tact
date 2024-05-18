@@ -1,7 +1,6 @@
-import "@stdlib/ownable";
 import "./messages.tact";
 
-contract JackPot with Ownable {
+contract JackPot {
     const MIN_TON_FOR_STORAGE: Int = ton("0.1");
     const GAS_CONSUMPTION: Int = ton("0.035");
 
