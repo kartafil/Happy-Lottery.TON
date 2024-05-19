@@ -3,9 +3,9 @@ import "@stdlib/ownable";
 import "./jack_pot.tact";
 import "./messages.tact";
 
-contract JackPotMaster with Deployable, Ownable {
+contract JackPotMaster with Ownable {
     const MIN_TON_FOR_STORAGE: Int = ton("0.1");
-    const GAS_CONSUMPTION: Int = ton("0.03");
+    const GAS_CONSUMPTION: Int = ton("0.015");
     id: Int as uint8;
     nextJackPotId: Int as uint64 = 0;
     owner: Address;
@@ -17,12 +17,15 @@ contract JackPotMaster with Deployable, Ownable {
     receive("withdraw"){
         self.requireOwner();
         send(SendParameters{
-                to: sender(),
-                bounce: true,
-                value: 0,
-                mode: ((myBalance() - context().value) - self.MIN_TON_FOR_STORAGE)
+                to: self.owner,
+                bounce: false,
+                value: myBalance() - context().value - self.MIN_TON_FOR_STORAGE,
+                mode: SendIgnoreErrors
             }
         );
+    }
+
+    receive(msg: Deploy) {
     }
 
     receive(msg: CreateJackPot){
@@ -31,7 +34,6 @@ contract JackPotMaster with Deployable, Ownable {
         let ctx: Context = context(); // get sender Info
         let msgValue: Int = ctx.value;
         let tonBalanceBeforeMsg: Int = (myBalance() - msgValue);
-        //Если баланс до получения сообщения был больше необходимой на хранилище суммы, то плата за хранилище будет равна 0
         let storageFee: Int = (self.MIN_TON_FOR_STORAGE - min(tonBalanceBeforeMsg, self.MIN_TON_FOR_STORAGE));
         msgValue = (msgValue - (storageFee + self.GAS_CONSUMPTION));
 

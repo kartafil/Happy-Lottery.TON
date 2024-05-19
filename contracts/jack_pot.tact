@@ -1,7 +1,7 @@
 import "./messages.tact";
 
 contract JackPot {
-    const MIN_TON_FOR_STORAGE: Int = ton("0.1");
+    const MIN_TON_FOR_STORAGE: Int = ton("0.05");
     const GAS_CONSUMPTION: Int = ton("0.035");
 
     user: Address? = null; // Адрес владельца 
