@@ -9,6 +9,10 @@ message CreateJackPotUser {
 
 message CreateJackPot {
     query_id: Int as uint64;
+    user_address: Address?;
+    goal_price: Int as coins;
+    min_bet: Int as coins;
+    duration: Int as uint32;
 }
 
 message GetNftBack {
@@ -22,6 +26,10 @@ message CheckNftOwnership {
 }
 
 message FinishJackPot {
+    query_id: Int as uint64;
+}
+
+message RefundJackPot {
     query_id: Int as uint64;
 }
 

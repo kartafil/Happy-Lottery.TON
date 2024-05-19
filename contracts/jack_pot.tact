@@ -4,29 +4,31 @@ contract JackPot {
     const MIN_TON_FOR_STORAGE: Int = ton("0.1");
     const GAS_CONSUMPTION: Int = ton("0.035");
 
-    id: Int as uint64;
-    user: Address; // Адрес владельца 
+    user: Address? = null; // Адрес владельца 
     owner: Address; // Адрес JackPotMaster
-    winner: Address? = null;
     nft: Address? = null;
-    totalBets: Int as coins = 0;
-    goalPrice: Int as coins = ton("100");
-    minBet: Int as coins = ton("0.2");
-    isFinished: Bool = false;
+    
+    id: Int as uint64;
+    bets: map<Int as uint32, Bet>;
+    minBet: Int as coins = 0;
     nextBetId: Int as uint32 = 0;
-    bets: map<Int, Bet>;
+    totalBets: Int as coins = 0;
+    goalPrice: Int as coins = 0;
+    duration: Int as uint32 = 0;
+    deadline: Int as uint32 = 0;
+    winner: Address? = null;
+    isFinished: Bool = false;
 
-
-    init(id: Int, user: Address, owner: Address) {
+    init(
+        id: Int,
+        owner: Address,
+        ) {
         self.id = id;
-        self.user = user;
         self.owner = owner;
         self.bets = emptyMap();
     }
 
     fun finish() {
-        self.isFinished = true;
-
         let i: Int = 0;
         let amount: Int = 0;
         nativeRandomize(now() / myBalance() + self.nextBetId);
@@ -53,7 +55,27 @@ contract JackPot {
         });
     }
 
+    fun refund() {
+        send(SendParameters {
+            to: myAddress(),
+            value: 0,
+            mode: SendRemainingBalance + SendIgnoreErrors,
+            body: RefundJackPot{
+                query_id: 0
+            }.toCell(),
+            bounce: false
+        });
+    }
+
     receive(msg: CreateJackPot) {
+        require(self.user == null, "JackPot already created");
+        require(msg.min_bet >= ton("0.2"), "Minimal bet is less than 0.2 ton");
+        // require(msg.duration > 86400, "Minimal duration is less than 24 hour");
+        self.duration = msg.duration;
+        self.goalPrice = msg.goal_price;
+        self.minBet = msg.min_bet;
+        self.user = msg.user_address;
+
         let ctx: Context = context();
     
         let msgValue: Int = ctx.value; // Check the gasCost for storage
@@ -64,7 +86,7 @@ contract JackPot {
         require(msgValue > 0, "invalid amount");
 
         send(SendParameters{
-                to: self.user,
+                to: self.user!!,
                 value: msgValue,
                 mode:  SendIgnoreErrors,
                 body: Excesses { query_id: msg.query_id }.toCell() //0xd53276db
@@ -72,9 +94,14 @@ contract JackPot {
     }
 
     receive("bet") {
-        let ctx: Context = context();
-        require(!self.isFinished, "Jackpot is finished");
         require(self.nft != null, "Contract doesn't have nft");
+        require(!self.isFinished, "Jackpot is finished");
+        if (now() >= self.deadline) {
+            self.refund();
+            return;
+        }
+
+        let ctx: Context = context();
         require(ctx.value >= self.minBet, "Not enough TON to make bet");
         
         self.bets.set(self.nextBetId, Bet{ address: ctx.sender, amount: ctx.value });
@@ -83,63 +110,109 @@ contract JackPot {
         self.totalBets = self.totalBets + ctx.value;
 
         if(self.totalBets >= self.goalPrice) {
-            dump("finish");
             self.finish();
         }
     }
 
     receive(msg: FinishJackPot) {
+        require(!self.isFinished, "JackPot is finished");
+        self.isFinished = true;
+
         dump(self.winner);
-        if (self.isFinished) {
-            let amountForUser: Int = myBalance() / 100 * 99 - self.GAS_CONSUMPTION * 2 - ton("0.1");
-            let amountForOwner: Int = myBalance() - amountForUser - self.GAS_CONSUMPTION - self.MIN_TON_FOR_STORAGE;
-            send(SendParameters {
-                to: self.user,
-                value: amountForUser,
-                mode: SendIgnoreErrors,
-                body: "JackPot payment".asComment(),
-                bounce: false
-            });
-            send(SendParameters{
-                to: self.nft!!,
-                value: ton("0.1"),
-                mode: SendIgnoreErrors,
-                bounce: true,
-                body: Transfer{
-                query_id: 0,   
-                new_owner: self.winner!!,
-                response_destination: self.owner,
-                custom_payload: emptyCell(),
-                forward_amount: 1,
-                forward_payload: emptySlice() 
-                }.toCell()
-            });
-            send(SendParameters {
-                to: self.owner,
-                value: 0,
-                mode: SendRemainingBalance+ SendIgnoreErrors,
-                body: "JackPot payment".asComment(),
-                bounce: false
-            });
-        }
+        let amountForUser: Int = myBalance() / 100 * 99 - self.GAS_CONSUMPTION * 2 - ton("0.1");
+        let amountForOwner: Int = myBalance() - amountForUser - self.GAS_CONSUMPTION - self.MIN_TON_FOR_STORAGE;
+        send(SendParameters {
+            to: self.user!!,
+            value: amountForUser,
+            mode: SendIgnoreErrors,
+            body: "JackPot payment".asComment(),
+            bounce: false
+        });
+        send(SendParameters{
+            to: self.nft!!,
+            value: ton("0.1"),
+            mode: SendIgnoreErrors,
+            bounce: true,
+            body: Transfer{
+            query_id: 0,   
+            new_owner: self.winner!!,
+            response_destination: self.owner,
+            custom_payload: emptyCell(),
+            forward_amount: 1,
+            forward_payload: emptySlice() 
+            }.toCell()
+        });
+        send(SendParameters {
+            to: self.owner,
+            value: 0,
+            mode: SendRemainingBalance + SendIgnoreErrors,
+            body: "JackPot finished".asComment(),
+            bounce: false
+        });
     }
 
-    receive(msg: GetNftBack) {
+    receive(msg: RefundJackPot) {
+        require(!self.isFinished, "JackPot is finished");
+        self.isFinished = true;
+
         send(SendParameters{
-            to: msg.nft_address,
-            value: context().value - self.GAS_CONSUMPTION,
-            mode: 0,
+            to: self.nft!!,
+            value: ton("0.1"),
+            mode: SendIgnoreErrors,
             bounce: true,
             body: Transfer{
                 query_id: 0,   
-                new_owner: self.user,
-                response_destination: self.user,
+                new_owner: self.user!!,
+                response_destination: self.owner,
                 custom_payload: emptyCell(),
                 forward_amount: 1,
                 forward_payload: emptySlice() 
             }.toCell()
         });
+
+        let fee: Int = self.GAS_CONSUMPTION + self.nextBetId * ton("0.00003");
+
+        let i: Int = 0;
+        while(i < self.nextBetId) {
+            let bet: Bet = self.bets.get(i)!!;
+            send(SendParameters {
+                to: bet.address,
+                value: bet.amount / 100 * 95 - fee,
+                mode: SendIgnoreErrors,
+                bounce: false,
+                body: "JackPot refund".asComment()
+            });
+            
+            i = i + 1;
+        }
+
+        self.bets = emptyMap();
+        
+        send(SendParameters {
+            to: self.owner,
+            value: 0,
+            mode: SendRemainingBalance + SendIgnoreErrors,
+            body: "JackPot finished".asComment(),
+            bounce: false
+        });
     }
+
+    // receive(msg: GetNftBack) {
+    //     send(SendParameters{
+    //         to: msg.nft_address,
+    //         value: context().value - self.GAS_CONSUMPTION,
+    //         mode: 0,
+    //         bounce: true,
+    //         body: Transfer{
+    //             query_id: 0,   
+    //             new_owner: self.user,
+    //             response_destination: self.user,
+    //             custom_payload: emptyCell(),
+    //             forward_amount: 1,
+    //             forward_payload: emptySlice() 
+    //         }.toCell()
+    //     });
+    // }
 
     receive(msg: CheckNftOwnership) {   
         let ctx: Context = context();
@@ -160,6 +233,7 @@ contract JackPot {
         });
 
         self.nft = msg.nft_address;
+        self.deadline = now() + self.duration;
     }
 
     bounced(src: bounced<Transfer>) {
@@ -167,8 +241,11 @@ contract JackPot {
     }
 
     receive(msg: OwnershipAssigned) {
+        require(self.nft == null, "Contract already have NFT");
         self.nft = sender();
+        self.deadline = now() + self.duration;
     }
+
 
     get fun get_nft_address(): Address? {
         return self.nft;
