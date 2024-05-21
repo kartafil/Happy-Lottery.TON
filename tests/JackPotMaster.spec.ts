@@ -9,6 +9,8 @@ import '@ton/test-utils';
 describe('JackPotMaster', () => {
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
+    let user: SandboxContract<TreasuryContract>;
+    let player: SandboxContract<TreasuryContract>;
     let jackPotMaster: SandboxContract<JackPotMaster>;
     let jackPot: SandboxContract<JackPot>;
     let nftCollection: SandboxContract<NftCollection>;
@@ -26,6 +28,8 @@ describe('JackPotMaster', () => {
 
         jackPotMaster = blockchain.openContract(await JackPotMaster.fromInit(0n));
         deployer = await blockchain.treasury('deployer');
+        user = await blockchain.treasury('user');
+        player = await blockchain.treasury('player');
 
         await jackPotMaster.send(
             deployer.getSender(),
@@ -40,7 +44,7 @@ describe('JackPotMaster', () => {
         );
 
         const createResult = await jackPotMaster.send(
-            deployer.getSender(),
+            user.getSender(),
             {
                 value: toNano('0.15'),
                 bounce: false
@@ -51,7 +55,7 @@ describe('JackPotMaster', () => {
                 duration: DURATION,
                 goal_price: GOAL,
                 min_bet: MIN_BET,
-                user_address: null                
+                user_address: null
             }
         );
 
@@ -108,8 +112,8 @@ describe('JackPotMaster', () => {
                 forward_payload: Cell.EMPTY
             }
         )
-            
-        expect(await jackPot.getGetNftAddress()).toEqualAddress(nftAddressFromCollection);
+
+        expect((await jackPot.getGetInfo()).nft_address).toEqualAddress(nftAddressFromCollection);
     });
 
     it('should deploy', async () => {
@@ -117,65 +121,106 @@ describe('JackPotMaster', () => {
         // blockchain and jackPotMaster are ready to use
     });
 
-    
-    // it('should support more users', async () => {
-    //     let users: SandboxContract<TreasuryContract>[] = [];
-    //     const COUNT = 100;
 
-    //     for (let i = 0; i < COUNT; i++) {
-    //         users.push(await blockchain.treasury(i.toString()));
-    //     }
-    //     let queue: { user: SandboxContract<TreasuryContract>; bet: bigint }[] = [];
-    //     for (let i = 0; i < COUNT; i++) {
-    //         for (let j = 0; j < 1; j++) {
-    //             queue.push({ user: users[i], bet: toNano(`1`) });
-    //         }
-    //     }
+    it('should support more users', async () => {
+        let users: SandboxContract<TreasuryContract>[] = [];
+        const COUNT = 100;
 
-    //     for (let i = queue.length - 1; i > 0; i--) {
-    //         const j = Math.floor(Math.random() * (i + 1));
-    //         [queue[i], queue[j]] = [queue[j], queue[i]];
-    //     }
+        for (let i = 0; i < COUNT; i++) {
+            users.push(await blockchain.treasury(i.toString()));
+        }
+        let queue: { user: SandboxContract<TreasuryContract>; bet: bigint }[] = [];
+        for (let i = 0; i < COUNT; i++) {
+            for (let j = 0; j < 1; j++) {
+                queue.push({ user: users[i], bet: toNano(`1`) });
+            }
+        }
 
-    //     //console.log(queue);
-    //     const bef = await deployer.getBalance();
-    //     console.log(bef);
+        for (let i = queue.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [queue[i], queue[j]] = [queue[j], queue[i]];
+        }
 
-    //     for (let i = 0; i < queue.length && i < GOAL / MIN_BET + 1n; i++) {
-    //         let result = await jackPot.send(
-    //             queue[i].user.getSender(),
-    //             {
-    //                 value: queue[i].bet
-    //             },
-    //             "bet"
-    //         );
-    //         if (i === 0 || i === queue.length - 2) {
-    //             printTransactionFees(result.transactions);
-    //         }
-    //         //console.log(await jackPot.getGetCurrentBalance());
-    //         if (await jackPot.getIsFinished()) {
-    //             console.log('Finished at ..>> ', i);
-    //             //console.log(await jackPot.getGetParticipants());
-    //             printTransactionFees(result.transactions);
-    //             expect(result.transactions).toHaveTransaction(
-    //                 {
-    //                     from: jackPot.address,
-    //                     op: 0x5fcc3d14
-    //                 }
-    //             );
-    //             expect(result.transactions).toHaveTransaction(
-    //                 {
-    //                     from: jackPot.address,
-    //                     to: deployer.address,
-    //                 }
-    //             );
-    //             break;
-    //         }
-    //     }
+        //console.log(queue);
+        const bef = await deployer.getBalance();
+        console.log(bef);
 
-    //     expect(await jackPot.getIsFinished());
+        for (let i = 0; i < queue.length && i < GOAL / MIN_BET + 1n; i++) {
+            let result = await jackPot.send(
+                queue[i].user.getSender(),
+                {
+                    value: queue[i].bet
+                },
+                "bet"
+            );
+            if (i === 0 || i === queue.length - 2) {
+                printTransactionFees(result.transactions);
+            }
+            //console.log(await jackPot.getGetCurrentBalance());
+            if ((await jackPot.getGetInfo()).isFinished) {
+                console.log('Finished at ..>> ', i);
+                //console.log(await jackPot.getGetParticipants());
+                printTransactionFees(result.transactions);
+                expect(result.transactions).toHaveTransaction(
+                    {
+                        from: jackPot.address,
+                        op: 0x5fcc3d14
+                    }
+                );
+                expect(result.transactions).toHaveTransaction(
+                    {
+                        from: jackPot.address,
+                        to: jackPotMaster.address,
+                    }
+                );
+                break;
+            }
+        }
 
-    // });
+        expect((await jackPot.getGetInfo()).isFinished);
+
+    });
+
+    it('shouldn\'t refund', async () => {
+        const p = new Promise((resolve) => {
+            setTimeout(
+                async () => {
+                    const res = await jackPot.send
+                        (
+                            player.getSender(),
+                            {
+                                value: toNano('0.15'),
+                                bounce: true
+                            },
+                            "bet"
+                        );
+                    resolve(res);
+                },
+                3500
+            );
+        });
+
+        jest.runAllTimers();
+        let ref: SendMessageResult = ((await p) as SendMessageResult);
+        printTransactionFees(ref.transactions);
+        // expect(ref.transactions).toHaveTransaction({
+        //     from: nftAddressFromCollection,
+        //     to: user.address,
+        // });
+
+        ref = await jackPot.send
+            (
+                player.getSender(),
+                {
+                    value: toNano('0.05'),
+                    bounce: true
+                },
+                "bet"
+            );
+
+        printTransactionFees(ref.transactions);
+    });
+
 
     it('should refund', async () => {
         let users: SandboxContract<TreasuryContract>[] = [];
@@ -230,7 +275,7 @@ describe('JackPotMaster', () => {
         printTransactionFees(ref.transactions);
         expect(ref.transactions).toHaveTransaction({
             from: nftAddressFromCollection,
-            to: deployer.address,
+            to: user.address,
         });
     });
 

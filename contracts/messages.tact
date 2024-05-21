@@ -3,8 +3,16 @@ struct Bet {
     amount: Int as coins;
 }
 
-message CreateJackPotUser {
-    query_id: Int as uint64;
+struct JackPotInfo {
+    id: Int as uint64;
+    isFinished: Bool;
+    creator_address: Address?;
+    winner: Address?;
+    goal_price: Int as coins;
+    total_bets: Int as coins;
+    min_bet: Int as coins;
+    nft_address: Address?;
+    deadline: Int as uint32;
 }
 
 message CreateJackPot {
@@ -16,11 +24,6 @@ message CreateJackPot {
 }
 
 message GetNftBack {
-    query_id: Int as uint64;
-    nft_address: Address;
-}
-
-message CheckNftOwnership {
     query_id: Int as uint64;
     nft_address: Address;
 }

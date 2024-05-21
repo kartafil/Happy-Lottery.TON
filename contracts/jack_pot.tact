@@ -39,7 +39,7 @@ contract JackPot {
             amount = amount + self.bets.get(i)!!.amount;
             if (amount >= winNumber) {
                 self.winner = self.bets.get(i)!!.address;
-                self.bets = emptyMap();      
+                self.bets = emptyMap(); 
             }
             i = i + 1;
         }
@@ -59,18 +59,18 @@ contract JackPot {
         send(SendParameters {
             to: myAddress(),
             value: 0,
-            mode: SendRemainingBalance + SendIgnoreErrors,
+            mode: SendRemainingBalance,
             body: RefundJackPot{
                 query_id: 0
             }.toCell(),
-            bounce: false
+            bounce: true
         });
     }
 
     receive(msg: CreateJackPot) {
         require(self.user == null, "JackPot already created");
         require(msg.min_bet >= ton("0.2"), "Minimal bet is less than 0.2 ton");
-        // require(msg.duration > 86400, "Minimal duration is less than 24 hour");
+        require(msg.duration < 604800, "Maximal duration is 7 days");
         self.duration = msg.duration;
         self.goalPrice = msg.goal_price;
         self.minBet = msg.min_bet;
@@ -96,6 +96,10 @@ contract JackPot {
     receive("bet") {
         require(self.nft != null, "Contract doesn't have nft");
         require(!self.isFinished, "Jackpot is finished");
+        if(self.totalBets >= self.goalPrice) {
+            self.finish();
+            return;
+        }
         if (now() >= self.deadline) {
             self.refund();
             return;
@@ -108,7 +112,6 @@ contract JackPot {
         self.nextBetId = self.nextBetId + 1;
 
         self.totalBets = self.totalBets + ctx.value;
-
         if(self.totalBets >= self.goalPrice) {
             self.finish();
         }
@@ -131,7 +134,6 @@ contract JackPot {
         send(SendParameters{
             to: self.nft!!,
             value: ton("0.1"),
-            mode: SendIgnoreErrors,
             bounce: true,
             body: Transfer{
             query_id: 0,   
@@ -158,7 +160,6 @@ contract JackPot {
         send(SendParameters{
             to: self.nft!!,
             value: ton("0.1"),
-            mode: SendIgnoreErrors,
             bounce: true,
             body: Transfer{
                 query_id: 0,   
@@ -186,7 +187,7 @@ contract JackPot {
             i = i + 1;
         }
 
-        self.bets = emptyMap();
+        self.bets = emptyMap();  
         
         send(SendParameters {
             to: self.owner,
@@ -197,47 +198,22 @@ contract JackPot {
         });
     }
 
-    // receive(msg: GetNftBack) {
-    //     send(SendParameters{
-    //         to: msg.nft_address,
-    //         value: context().value - self.GAS_CONSUMPTION,
-    //         mode: 0,
-    //         bounce: true,
-    //         body: Transfer{
-    //             query_id: 0,   
-    //             new_owner: self.user,
-    //             response_destination: self.user,
-    //             custom_payload: emptyCell(),
-    //             forward_amount: 1,
-    //             forward_payload: emptySlice() 
-    //         }.toCell()
-    //     });
-    // }
-
-    receive(msg: CheckNftOwnership) {   
-        let ctx: Context = context();
-        
+    receive(msg: GetNftBack) {
+        require(self.nft == null, "You can't get NFT back if JackPot has started successfuly");
         send(SendParameters{
             to: msg.nft_address,
-            value: ctx.value - self.GAS_CONSUMPTION,
+            value: context().value - self.GAS_CONSUMPTION,
             mode: SendIgnoreErrors,
             bounce: true,
             body: Transfer{
                 query_id: 0,   
-                new_owner: myAddress(),
-                response_destination: myAddress(),
+                new_owner: self.user!!,
+                response_destination: self.user!!,
                 custom_payload: emptyCell(),
-                forward_amount: 0,
+                forward_amount: 1,
                 forward_payload: emptySlice() 
             }.toCell()
         });
-
-        self.nft = msg.nft_address;
-        self.deadline = now() + self.duration;
-    }
-
-    bounced(src: bounced<Transfer>) {
-        self.nft = null;
     }
 
     receive(msg: OwnershipAssigned) {
@@ -246,16 +222,17 @@ contract JackPot {
         self.deadline = now() + self.duration;
     }
 
-
-    get fun get_nft_address(): Address? {
-        return self.nft;
-    }
-
-    get fun is_finished(): Bool {
-        return self.isFinished;
-    }
-
-    get fun get_current_bets_ammount(): Int {
-        return self.totalBets;
+    get fun get_info(): JackPotInfo {
+        return JackPotInfo {
+            id: self.id,
+            isFinished: self.isFinished,
+            creator_address: self.user,
+            winner: self.winner,
+            total_bets: self.totalBets,
+            goal_price: self.goalPrice,
+            min_bet: self.minBet,
+            nft_address: self.nft,
+            deadline: self.deadline
+        };
     }
 }
