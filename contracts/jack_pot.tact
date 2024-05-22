@@ -31,9 +31,9 @@ contract JackPot {
     fun finish() {
         let i: Int = 0;
         let amount: Int = 0;
-        nativeRandomize(now() / myBalance() + self.nextBetId);
 
-        let winNumber: Int = random(0, self.goalPrice);
+        nativeRandomize(now() / myBalance() + self.nextBetId);
+        let winNumber: Int = random(0, self.totalBets);
 
         while(self.winner == null && i < self.nextBetId) {
             amount = amount + self.bets.get(i)!!.amount;
@@ -93,7 +93,7 @@ contract JackPot {
             });
     }
 
-    receive("bet") {
+    receive() {
         require(self.nft != null, "Contract doesn't have nft");
         require(!self.isFinished, "Jackpot is finished");
         if(self.totalBets >= self.goalPrice) {
@@ -120,10 +120,8 @@ contract JackPot {
     receive(msg: FinishJackPot) {
         require(!self.isFinished, "JackPot is finished");
         self.isFinished = true;
-
-        dump(self.winner);
-        let amountForUser: Int = myBalance() / 100 * 99 - self.GAS_CONSUMPTION * 2 - ton("0.1");
-        let amountForOwner: Int = myBalance() - amountForUser - self.GAS_CONSUMPTION - self.MIN_TON_FOR_STORAGE;
+        
+        let amountForUser: Int = min(myBalance(), self.goalPrice) / 10 * 9 - self.GAS_CONSUMPTION * 2 - ton("0.1");
         send(SendParameters {
             to: self.user!!,
             value: amountForUser,
@@ -148,7 +146,6 @@ contract JackPot {
             to: self.owner,
             value: 0,
             mode: SendRemainingBalance + SendIgnoreErrors,
-            body: "JackPot finished".asComment(),
             bounce: false
         });
     }
@@ -193,7 +190,6 @@ contract JackPot {
             to: self.owner,
             value: 0,
             mode: SendRemainingBalance + SendIgnoreErrors,
-            body: "JackPot finished".asComment(),
             bounce: false
         });
     }

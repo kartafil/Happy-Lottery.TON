@@ -151,7 +151,7 @@ describe('JackPotMaster', () => {
                 {
                     value: queue[i].bet
                 },
-                "bet"
+                null
             );
             if (i === 0 || i === queue.length - 2) {
                 printTransactionFees(result.transactions);
@@ -192,7 +192,7 @@ describe('JackPotMaster', () => {
                                 value: toNano('0.15'),
                                 bounce: true
                             },
-                            "bet"
+                            null
                         );
                     resolve(res);
                 },
@@ -215,7 +215,7 @@ describe('JackPotMaster', () => {
                     value: toNano('0.05'),
                     bounce: true
                 },
-                "bet"
+                null
             );
 
         printTransactionFees(ref.transactions);
@@ -248,7 +248,7 @@ describe('JackPotMaster', () => {
                 {
                     value: queue[i].bet
                 },
-                "bet"
+                null
             );
         }
 
@@ -261,7 +261,7 @@ describe('JackPotMaster', () => {
                             {
                                 value: toNano('0.2')
                             },
-                            "bet"
+                            null
                         );
                     resolve(res);
                 },

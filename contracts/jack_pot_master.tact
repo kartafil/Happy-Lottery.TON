@@ -42,13 +42,20 @@ contract JackPotMaster with Ownable {
         );
     }
 
+    receive() {
+    }
+
     receive(msg: Deploy) {
     }
 
-    receive(msg: CreateJackPot){
-        msg.user_address = sender();
+    receive(msg: Excesses) {
+    }
 
-        let ctx: Context = context(); // get sender Info
+    receive(msg: CreateJackPot){
+        let ctx: Context = context();
+        
+        msg.user_address = ctx.sender;
+
         let msgValue: Int = ctx.value;
         let tonBalanceBeforeMsg: Int = (myBalance() - msgValue);
         let storageFee: Int = (self.MIN_TON_FOR_STORAGE - min(tonBalanceBeforeMsg, self.MIN_TON_FOR_STORAGE));
