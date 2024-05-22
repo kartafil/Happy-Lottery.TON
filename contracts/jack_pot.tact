@@ -93,7 +93,7 @@ contract JackPot {
             });
     }
 
-    receive() {
+    receive("bet") {
         require(self.nft != null, "Contract doesn't have nft");
         require(!self.isFinished, "Jackpot is finished");
         if(self.totalBets >= self.goalPrice) {
