@@ -151,7 +151,7 @@ describe('JackPotMaster', () => {
                 {
                     value: queue[i].bet
                 },
-                null
+                'bet'
             );
             if (i === 0 || i === queue.length - 2) {
                 printTransactionFees(result.transactions);
@@ -178,7 +178,52 @@ describe('JackPotMaster', () => {
         }
 
         expect((await jackPot.getGetInfo()).isFinished);
+    });
 
+    it('should send excesses on bet overflow', async () => {
+        let users: SandboxContract<TreasuryContract>[] = [];
+        const COUNT = 100;
+
+        for (let i = 0; i < COUNT; i++) {
+            users.push(await blockchain.treasury(i.toString()));
+        }
+        let queue: { user: SandboxContract<TreasuryContract>; bet: bigint }[] = [];
+        for (let i = 0; i < COUNT; i++) {
+            for (let j = 0; j < 1; j++) {
+                queue.push({ user: users[i], bet: toNano(`1`) });
+            }
+        }
+
+        for (let i = queue.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [queue[i], queue[j]] = [queue[j], queue[i]];
+        }
+
+
+        for (let i = 0; i < 99; i++) {
+            await jackPot.send(
+                queue[i].user.getSender(),
+                {
+                    value: queue[i].bet
+                },
+                'bet'
+            );
+        }
+
+        
+        const result = await jackPot.send(
+            queue[0].user.getSender(),
+            {
+                value: toNano('1.5')
+            },
+            'bet'
+        );
+
+        printTransactionFees(result.transactions)
+        expect(result.transactions).toHaveTransaction({
+            from: jackPot.address,
+            op: 0xd53276db
+        })
     });
 
     it('shouldn\'t refund', async () => {
@@ -192,7 +237,7 @@ describe('JackPotMaster', () => {
                                 value: toNano('0.15'),
                                 bounce: true
                             },
-                            null
+                            'bet'
                         );
                     resolve(res);
                 },
@@ -203,10 +248,10 @@ describe('JackPotMaster', () => {
         jest.runAllTimers();
         let ref: SendMessageResult = ((await p) as SendMessageResult);
         printTransactionFees(ref.transactions);
-        // expect(ref.transactions).toHaveTransaction({
-        //     from: nftAddressFromCollection,
-        //     to: user.address,
-        // });
+        expect(ref.transactions).toHaveTransaction({
+            from: nftAddressFromCollection,
+            to: user.address,
+        });
 
         ref = await jackPot.send
             (
@@ -215,7 +260,7 @@ describe('JackPotMaster', () => {
                     value: toNano('0.05'),
                     bounce: true
                 },
-                null
+                'bet'
             );
 
         printTransactionFees(ref.transactions);
@@ -248,7 +293,7 @@ describe('JackPotMaster', () => {
                 {
                     value: queue[i].bet
                 },
-                null
+                'bet'
             );
         }
 
@@ -261,7 +306,7 @@ describe('JackPotMaster', () => {
                             {
                                 value: toNano('0.2')
                             },
-                            null
+                            'bet'
                         );
                     resolve(res);
                 },

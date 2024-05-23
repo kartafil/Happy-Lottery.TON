@@ -4,7 +4,7 @@ import { NetworkProvider, createNetworkProvider } from '@ton/blueprint';
 
 export async function run(provider: NetworkProvider) {
     
-    const jackPotMaster = provider.open(await JackPotMaster.fromInit(0n));
+    const jackPotMaster = provider.open(await JackPotMaster.fromInit(3n));
 
     await jackPotMaster.send(
         provider.sender(),

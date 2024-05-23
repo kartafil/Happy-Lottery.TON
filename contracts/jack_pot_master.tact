@@ -23,7 +23,7 @@ contract JackPotMaster with Ownable {
         let ctx: Context = context();
 
 
-        let amountForRoyalty: Int = (myBalance() - ctx.value) / 10 - self.GAS_CONSUMPTION;
+        let amountForRoyalty: Int = (myBalance() - ctx.value - self.GAS_CONSUMPTION) / 10;
         let amountForOwner: Int = (myBalance() - ctx.value) / 10 * 9 - self.GAS_CONSUMPTION;
 
         send(SendParameters{

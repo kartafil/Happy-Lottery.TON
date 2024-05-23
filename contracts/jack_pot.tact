@@ -96,7 +96,7 @@ contract JackPot {
     receive("bet") {
         require(self.nft != null, "Contract doesn't have nft");
         require(!self.isFinished, "Jackpot is finished");
-        if(self.totalBets >= self.goalPrice) {
+        if (self.totalBets >= self.goalPrice) {
             self.finish();
             return;
         }
@@ -112,7 +112,15 @@ contract JackPot {
         self.nextBetId = self.nextBetId + 1;
 
         self.totalBets = self.totalBets + ctx.value;
-        if(self.totalBets >= self.goalPrice) {
+        let excesses: Int = self.totalBets - self.goalPrice;
+
+        if (excesses >= 0) {
+            send(SendParameters {
+                to: ctx.sender,
+                value: excesses,
+                mode: SendIgnoreErrors,
+                body: Excesses { query_id: 0 }.toCell()
+            });
             self.finish();
         }
     }
