@@ -55,7 +55,7 @@ describe('LotteryAdmin', () => {
                 duration: DURATION,
                 goal_price: GOAL,
                 min_bet: MIN_BET,
-                user_address: null
+                creator_address: null
             }
         );
 

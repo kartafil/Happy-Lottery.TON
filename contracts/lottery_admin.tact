@@ -59,7 +59,7 @@ contract LotteryAdmin with Ownable {
         msgValue = (msgValue - (storageFee + self.GAS_CONSUMPTION));
         require(msgValue > ton("0.1"), "Not enough TON");
 
-        msg.user_address = ctx.sender;
+        msg.creator_address = ctx.sender;
 
         let init: StateInit = initOf Lottery(self.nextLotteryId, myAddress());
         let address: Address = contractAddress(init);

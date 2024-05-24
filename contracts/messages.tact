@@ -13,12 +13,13 @@ struct LotteryInfo {
     total_bets: Int as coins;
     min_bet: Int as coins;
     nft_address: Address?;
+    duration: Int as uint32;
     deadline: Int as uint32;
 }
 
 message CreateLottery {
     query_id: Int as uint64;
-    user_address: Address?;
+    creator_address: Address?;
     goal_price: Int as coins;
     min_bet: Int as coins;
     duration: Int as uint32;

@@ -4,8 +4,8 @@ contract Lottery {
     const MIN_TON_FOR_STORAGE: Int = ton("0.05");
     const GAS_CONSUMPTION: Int = ton("0.035");
 
-    user: Address? = null; // Адрес владельца 
-    owner: Address; // Адрес JackPotMaster
+    creator: Address? = null;
+    owner: Address;
     nft: Address? = null;
     
     id: Int as uint64;
@@ -69,11 +69,11 @@ contract Lottery {
     }
 
     receive(msg: CreateLottery) {
-        require(self.user == null, "Lottery already created");
+        require(self.creator == null, "Lottery already created");
         self.duration = msg.duration;
         self.goalPrice = msg.goal_price;
         self.minBet = msg.min_bet;
-        self.user = msg.user_address;
+        self.creator = msg.creator_address;
 
         let ctx: Context = context();
     
@@ -85,7 +85,7 @@ contract Lottery {
         require(msgValue > 0, "invalid amount");
 
         send(SendParameters{
-                to: self.user!!,
+                to: self.creator!!,
                 value: msgValue,
                 mode:  SendIgnoreErrors,
                 body: Excesses { query_id: msg.query_id }.toCell() //0xd53276db
@@ -128,10 +128,10 @@ contract Lottery {
         require(!self.isFinished, "Lottery is finished");
         self.isFinished = true;
 
-        let amountForUser: Int = min(myBalance(), self.goalPrice) / 10 * 9 - self.GAS_CONSUMPTION * 2 - ton("0.1");
+        let amountForCreator: Int = min(myBalance(), self.goalPrice) / 10 * 9 - self.GAS_CONSUMPTION * 2 - ton("0.1");
         send(SendParameters {
-            to: self.user!!,
-            value: amountForUser,
+            to: self.creator!!,
+            value: amountForCreator,
             mode: SendIgnoreErrors,
             body: "Happy-Lottery payment".asComment(),
             bounce: false
@@ -167,7 +167,7 @@ contract Lottery {
             bounce: true,
             body: Transfer{
                 query_id: 0,   
-                new_owner: self.user!!,
+                new_owner: self.creator!!,
                 response_destination: self.owner,
                 custom_payload: emptyCell(),
                 forward_amount: 1,
@@ -210,8 +210,8 @@ contract Lottery {
             bounce: true,
             body: Transfer{
                 query_id: 0,   
-                new_owner: self.user!!,
-                response_destination: self.user!!,
+                new_owner: self.creator!!,
+                response_destination: self.creator!!,
                 custom_payload: emptyCell(),
                 forward_amount: 1,
                 forward_payload: emptySlice() 
@@ -230,12 +230,13 @@ contract Lottery {
             id: self.id,
             isFinished: self.isFinished,
             isRefunded: self.isRefunded,
-            creator_address: self.user,
+            creator_address: self.creator,
             winner_address: self.winner,
             total_bets: self.totalBets,
             goal_price: self.goalPrice,
             min_bet: self.minBet,
             nft_address: self.nft,
+            duration: self.duration,
             deadline: self.deadline
         };
     }
