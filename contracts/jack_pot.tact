@@ -18,6 +18,7 @@ contract JackPot {
     deadline: Int as uint32 = 0;
     winner: Address? = null;
     isFinished: Bool = false;
+    isRefunded: Bool = false;
 
     init(
         id: Int,
@@ -68,9 +69,7 @@ contract JackPot {
     }
 
     receive(msg: CreateJackPot) {
-        require(self.user == null, "JackPot already created");
-        require(msg.min_bet >= ton("0.2"), "Minimal bet is less than 0.2 ton");
-        require(msg.duration < 604800, "Maximal duration is 7 days");
+        require(self.user == null, "Lottery already created");
         self.duration = msg.duration;
         self.goalPrice = msg.goal_price;
         self.minBet = msg.min_bet;
@@ -95,7 +94,7 @@ contract JackPot {
 
     receive("bet") {
         require(self.nft != null, "Contract doesn't have nft");
-        require(!self.isFinished, "Jackpot is finished");
+        require(!self.isFinished && !self.isRefunded, "Jackpot is finished");
         if (self.totalBets >= self.goalPrice) {
             self.finish();
             return;
@@ -128,7 +127,7 @@ contract JackPot {
     receive(msg: FinishJackPot) {
         require(!self.isFinished, "JackPot is finished");
         self.isFinished = true;
-        
+
         let amountForUser: Int = min(myBalance(), self.goalPrice) / 10 * 9 - self.GAS_CONSUMPTION * 2 - ton("0.1");
         send(SendParameters {
             to: self.user!!,
@@ -159,8 +158,8 @@ contract JackPot {
     }
 
     receive(msg: RefundJackPot) {
-        require(!self.isFinished, "JackPot is finished");
-        self.isFinished = true;
+        require(!self.isRefunded, "Lottery is finished");
+        self.isRefunded = true;
 
         send(SendParameters{
             to: self.nft!!,
