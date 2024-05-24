@@ -1,15 +1,15 @@
 import "@stdlib/deploy";
 import "@stdlib/ownable";
-import "./jack_pot.tact";
+import "./lottery.tact";
 import "./messages.tact";
 
-contract JackPotMaster with Ownable {
+contract LotteryAdmin with Ownable {
     const MIN_TON_FOR_STORAGE: Int = ton("0.1");
     const GAS_CONSUMPTION: Int = ton("0.015");
     const ROYALTY: Address = address("UQC1NmDnGpzILcUXGGY0w2bSwrKUxS6S_F_neQMpPfayH1rb");
 
     id: Int as uint8;
-    nextJackPotId: Int as uint64 = 0;
+    nextLotteryId: Int as uint64 = 0;
     owner: Address;
 
     init(id: Int){
@@ -48,7 +48,7 @@ contract JackPotMaster with Ownable {
     receive(msg: Excesses) {
     }
 
-    receive(msg: CreateJackPot){
+    receive(msg: CreateLottery){
         require(msg.min_bet >= ton("0.2"), "Minimal bet is less than 0.2 ton");
         require(msg.duration <= 604800, "Maximal duration is 7 days");
 
@@ -61,7 +61,7 @@ contract JackPotMaster with Ownable {
 
         msg.user_address = ctx.sender;
 
-        let init: StateInit = initOf JackPot(self.nextJackPotId, myAddress());
+        let init: StateInit = initOf Lottery(self.nextLotteryId, myAddress());
         let address: Address = contractAddress(init);
         send(SendParameters{
                 to: address,
@@ -73,17 +73,17 @@ contract JackPotMaster with Ownable {
             }
         );
 
-        self.nextJackPotId = self.nextJackPotId + 1;
+        self.nextLotteryId = self.nextLotteryId + 1;
     }
 
-    bounced(src: bounced<CreateJackPot>) {
-        self.nextJackPotId = self.nextJackPotId - 1;
+    bounced(src: bounced<CreateLottery>) {
+        self.nextLotteryId = self.nextLotteryId - 1;
     }
 
-    get fun get_jackpot_address(id: Int): Address {
-        return contractAddress(initOf JackPot(id, myAddress()));
+    get fun get_lottery_address(id: Int): Address {
+        return contractAddress(initOf Lottery(id, myAddress()));
     }
-    get fun get_next_jackpot_id(): Int {
-        return self.nextJackPotId;
+    get fun get_next_lottery_id(): Int {
+        return self.nextLotteryId;
     }
 }

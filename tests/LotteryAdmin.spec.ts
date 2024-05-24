@@ -1,18 +1,18 @@
 import { Blockchain, SandboxContract, SendMessageResult, TreasuryContract, printTransactionFees } from '@ton/sandbox';
 import { Address, BitReader, BitString, Cell, Slice, toNano } from '@ton/core';
-import { JackPotMaster } from '../wrappers/JackPotMaster';
-import { JackPot } from '../build/JackPotMaster/tact_JackPot';
+import { LotteryAdmin } from '../wrappers/LotteryAdmin';
+import { Lottery } from '../build/LotteryAdmin/tact_Lottery';
 import { NftCollection } from '../build/NftCollection/tact_NftCollection';
 import { NftItem } from '../build/NftCollection/tact_NftItem';
 import '@ton/test-utils';
 
-describe('JackPotMaster', () => {
+describe('LotteryAdmin', () => {
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
     let user: SandboxContract<TreasuryContract>;
     let player: SandboxContract<TreasuryContract>;
-    let jackPotMaster: SandboxContract<JackPotMaster>;
-    let jackPot: SandboxContract<JackPot>;
+    let jackPotMaster: SandboxContract<LotteryAdmin>;
+    let jackPot: SandboxContract<Lottery>;
     let nftCollection: SandboxContract<NftCollection>;
     let nft: SandboxContract<NftItem>;
     let nftAddressFromCollection: Address;
@@ -26,7 +26,7 @@ describe('JackPotMaster', () => {
 
         jest.useFakeTimers();
 
-        jackPotMaster = blockchain.openContract(await JackPotMaster.fromInit(0n));
+        jackPotMaster = blockchain.openContract(await LotteryAdmin.fromInit(0n));
         deployer = await blockchain.treasury('deployer');
         user = await blockchain.treasury('user');
         player = await blockchain.treasury('player');
@@ -50,7 +50,7 @@ describe('JackPotMaster', () => {
                 bounce: false
             },
             {
-                $$type: 'CreateJackPot',
+                $$type: 'CreateLottery',
                 query_id: 0n,
                 duration: DURATION,
                 goal_price: GOAL,
@@ -92,7 +92,7 @@ describe('JackPotMaster', () => {
             }
         );
 
-        jackPot = blockchain.openContract(await JackPot.fromAddress(await jackPotMaster.getGetJackpotAddress(0n)));
+        jackPot = blockchain.openContract(await Lottery.fromAddress(await jackPotMaster.getGetLotteryAddress(0n)));
 
         nftAddressFromCollection = await nftCollection.getGetNftAddressByIndex(0n) as Address;
         nft = blockchain.openContract(await NftItem.fromAddress(nftAddressFromCollection));

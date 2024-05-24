@@ -1,6 +1,6 @@
 import "./messages.tact";
 
-contract JackPot {
+contract Lottery {
     const MIN_TON_FOR_STORAGE: Int = ton("0.05");
     const GAS_CONSUMPTION: Int = ton("0.035");
 
@@ -49,7 +49,7 @@ contract JackPot {
             to: myAddress(),
             value: 0,
             mode: SendRemainingBalance + SendIgnoreErrors,
-            body: FinishJackPot{
+            body: FinishLottery{
                 query_id: 0
             }.toCell(),
             bounce: false
@@ -61,14 +61,14 @@ contract JackPot {
             to: myAddress(),
             value: 0,
             mode: SendRemainingBalance,
-            body: RefundJackPot{
+            body: RefundLottery{
                 query_id: 0
             }.toCell(),
             bounce: true
         });
     }
 
-    receive(msg: CreateJackPot) {
+    receive(msg: CreateLottery) {
         require(self.user == null, "Lottery already created");
         self.duration = msg.duration;
         self.goalPrice = msg.goal_price;
@@ -94,7 +94,7 @@ contract JackPot {
 
     receive("bet") {
         require(self.nft != null, "Contract doesn't have nft");
-        require(!self.isFinished && !self.isRefunded, "Jackpot is finished");
+        require(!self.isFinished && !self.isRefunded, "Lottery is finished");
         if (self.totalBets >= self.goalPrice) {
             self.finish();
             return;
@@ -124,8 +124,8 @@ contract JackPot {
         }
     }
 
-    receive(msg: FinishJackPot) {
-        require(!self.isFinished, "JackPot is finished");
+    receive(msg: FinishLottery) {
+        require(!self.isFinished, "Lottery is finished");
         self.isFinished = true;
 
         let amountForUser: Int = min(myBalance(), self.goalPrice) / 10 * 9 - self.GAS_CONSUMPTION * 2 - ton("0.1");
@@ -133,7 +133,7 @@ contract JackPot {
             to: self.user!!,
             value: amountForUser,
             mode: SendIgnoreErrors,
-            body: "JackPot payment".asComment(),
+            body: "Happy-Lottery payment".asComment(),
             bounce: false
         });
         send(SendParameters{
@@ -157,7 +157,7 @@ contract JackPot {
         });
     }
 
-    receive(msg: RefundJackPot) {
+    receive(msg: RefundLottery) {
         require(!self.isRefunded, "Lottery is finished");
         self.isRefunded = true;
 
@@ -185,7 +185,7 @@ contract JackPot {
                 value: bet.amount / 100 * 95 - fee,
                 mode: SendIgnoreErrors,
                 bounce: false,
-                body: "JackPot refund".asComment()
+                body: "Happy-Lottery refund".asComment()
             });
             
             i = i + 1;
@@ -202,7 +202,7 @@ contract JackPot {
     }
 
     receive(msg: GetNftBack) {
-        require(self.nft == null, "You can't get NFT back if JackPot has started successfuly");
+        require(self.nft == null, "You can't get NFT back if Lottery has started successfuly");
         send(SendParameters{
             to: msg.nft_address,
             value: context().value - self.GAS_CONSUMPTION,
@@ -225,12 +225,13 @@ contract JackPot {
         self.deadline = now() + self.duration;
     }
 
-    get fun get_info(): JackPotInfo {
-        return JackPotInfo {
+    get fun get_info(): LotteryInfo {
+        return LotteryInfo {
             id: self.id,
             isFinished: self.isFinished,
+            isRefunded: self.isRefunded,
             creator_address: self.user,
-            winner: self.winner,
+            winner_address: self.winner,
             total_bets: self.totalBets,
             goal_price: self.goalPrice,
             min_bet: self.minBet,

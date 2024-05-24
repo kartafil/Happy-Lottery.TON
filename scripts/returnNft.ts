@@ -2,7 +2,7 @@ import { Address, toNano } from '@ton/core';
 import { JackPot } from '../build/JackPotMaster/tact_JackPot';
 import { NftCollection } from '../build/NftCollection/tact_NftCollection';
 import { NetworkProvider } from '@ton/blueprint';
-import { jackPot_address, my_wallet } from './consts';
+import { jackPot_address } from './consts';
 
 export async function run(provider: NetworkProvider) {
     const jackPot = provider.open(await JackPot.fromAddress(jackPot_address)); //EQA4IL4G97HYLO-UFZbLJbQ_b9j0q3wnDHNhCp8CinvNw5s5
@@ -21,7 +21,4 @@ export async function run(provider: NetworkProvider) {
     )
 
     console.log(transaction);
-
-    console.log('Nft ..>> ', Address.parseRaw('0:f45c0d0226d37f1a4c05c22346ae673a7b618104094c1f2b132822aa944931c6'))
-    
 }

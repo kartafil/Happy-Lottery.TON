@@ -3,11 +3,12 @@ struct Bet {
     amount: Int as coins;
 }
 
-struct JackPotInfo {
+struct LotteryInfo {
     id: Int as uint64;
     isFinished: Bool;
+    isRefunded: Bool;
     creator_address: Address?;
-    winner: Address?;
+    winner_address: Address?;
     goal_price: Int as coins;
     total_bets: Int as coins;
     min_bet: Int as coins;
@@ -15,7 +16,7 @@ struct JackPotInfo {
     deadline: Int as uint32;
 }
 
-message CreateJackPot {
+message CreateLottery {
     query_id: Int as uint64;
     user_address: Address?;
     goal_price: Int as coins;
@@ -28,11 +29,11 @@ message GetNftBack {
     nft_address: Address;
 }
 
-message FinishJackPot {
+message FinishLottery {
     query_id: Int as uint64;
 }
 
-message RefundJackPot {
+message RefundLottery{
     query_id: Int as uint64;
 }
 
