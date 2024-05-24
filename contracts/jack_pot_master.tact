@@ -42,9 +42,6 @@ contract JackPotMaster with Ownable {
         );
     }
 
-    receive() {
-    }
-
     receive(msg: Deploy) {
     }
 
@@ -52,21 +49,23 @@ contract JackPotMaster with Ownable {
     }
 
     receive(msg: CreateJackPot){
-        let ctx: Context = context();
-        
-        msg.user_address = ctx.sender;
+        require(msg.min_bet >= ton("0.2"), "Minimal bet is less than 0.2 ton");
+        require(msg.duration <= 604800, "Maximal duration is 7 days");
 
+        let ctx: Context = context();
         let msgValue: Int = ctx.value;
         let tonBalanceBeforeMsg: Int = (myBalance() - msgValue);
         let storageFee: Int = (self.MIN_TON_FOR_STORAGE - min(tonBalanceBeforeMsg, self.MIN_TON_FOR_STORAGE));
         msgValue = (msgValue - (storageFee + self.GAS_CONSUMPTION));
+        require(msgValue > ton("0.1"), "Not enough TON");
+
+        msg.user_address = ctx.sender;
 
         let init: StateInit = initOf JackPot(self.nextJackPotId, myAddress());
         let address: Address = contractAddress(init);
         send(SendParameters{
                 to: address,
                 value: msgValue,
-                mode: SendIgnoreErrors,
                 bounce: true,
                 code: init.code,
                 data: init.data,

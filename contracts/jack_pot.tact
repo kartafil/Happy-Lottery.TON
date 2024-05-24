@@ -147,7 +147,7 @@ contract JackPot {
             response_destination: self.owner,
             custom_payload: emptyCell(),
             forward_amount: 1,
-            forward_payload: emptySlice() 
+            forward_payload: "Happy-Lottery WIN!".asComment().beginParse()
             }.toCell()
         });
         send(SendParameters {
