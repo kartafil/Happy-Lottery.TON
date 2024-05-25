@@ -136,14 +136,10 @@ describe('LotteryAdmin', () => {
             }
         }
 
-        for (let i = queue.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [queue[i], queue[j]] = [queue[j], queue[i]];
-        }
-
-        //console.log(queue);
-        const bef = await deployer.getBalance();
-        console.log(bef);
+        // for (let i = queue.length - 1; i > 0; i--) {
+        //     const j = Math.floor(Math.random() * (i + 1));
+        //     [queue[i], queue[j]] = [queue[j], queue[i]];
+        // }
 
         for (let i = 0; i < queue.length && i < GOAL / MIN_BET + 1n; i++) {
             let result = await jackPot.send(
@@ -156,10 +152,8 @@ describe('LotteryAdmin', () => {
             if (i === 0 || i === queue.length - 2) {
                 printTransactionFees(result.transactions);
             }
-            //console.log(await jackPot.getGetCurrentBalance());
             if ((await jackPot.getGetInfo()).isFinished) {
                 console.log('Finished at ..>> ', i);
-                //console.log(await jackPot.getGetParticipants());
                 printTransactionFees(result.transactions);
                 expect(result.transactions).toHaveTransaction(
                     {
@@ -177,7 +171,7 @@ describe('LotteryAdmin', () => {
             }
         }
 
-        expect((await jackPot.getGetInfo()).isFinished);
+        expect((await jackPot.getGetInfo()).isFinished).toBe(true);
     });
 
     it('should send excesses on bet overflow', async () => {
@@ -193,12 +187,6 @@ describe('LotteryAdmin', () => {
                 queue.push({ user: users[i], bet: toNano(`1`) });
             }
         }
-
-        for (let i = queue.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [queue[i], queue[j]] = [queue[j], queue[i]];
-        }
-
 
         for (let i = 0; i < 99; i++) {
             await jackPot.send(
@@ -226,7 +214,7 @@ describe('LotteryAdmin', () => {
         })
     });
 
-    it('shouldn\'t refund', async () => {
+    it('should refund if 0 bets', async () => {
         const p = new Promise((resolve) => {
             setTimeout(
                 async () => {
@@ -252,18 +240,6 @@ describe('LotteryAdmin', () => {
             from: nftAddressFromCollection,
             to: user.address,
         });
-
-        ref = await jackPot.send
-            (
-                player.getSender(),
-                {
-                    value: toNano('0.05'),
-                    bounce: true
-                },
-                'bet'
-            );
-
-        printTransactionFees(ref.transactions);
     });
 
 

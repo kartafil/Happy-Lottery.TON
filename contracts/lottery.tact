@@ -30,26 +30,11 @@ contract Lottery {
     }
 
     fun finish() {
-        let i: Int = 0;
-        let amount: Int = 0;
-
-        nativeRandomize(now() / myBalance() + self.nextBetId);
-        let winNumber: Int = random(0, self.totalBets);
-
-        while(self.winner == null && i < self.nextBetId) {
-            amount = amount + self.bets.get(i)!!.amount;
-            if (amount >= winNumber) {
-                self.winner = self.bets.get(i)!!.address;
-                self.bets = emptyMap(); 
-            }
-            i = i + 1;
-        }
-
         send(SendParameters {
             to: myAddress(),
             value: 0,
-            mode: SendRemainingBalance + SendIgnoreErrors,
-            body: FinishLottery{
+            mode: SendRemainingBalance,
+            body: CalcWinner{
                 query_id: 0
             }.toCell(),
             bounce: false
@@ -70,6 +55,11 @@ contract Lottery {
 
     receive(msg: CreateLottery) {
         require(self.creator == null, "Lottery already created");
+        require(msg.min_bet >= ton("0.2"), "Minimal bet must be greater than 0.2 ton");
+        require(msg.goal_price >= ton("1"), "Minimal goal must be greater than 1 ton");
+        require(msg.duration <= 604800, "Maximal duration is 7 days");
+        require(msg.creator_address != null, "Can't initialize lottery without creator_address");
+
         self.duration = msg.duration;
         self.goalPrice = msg.goal_price;
         self.minBet = msg.min_bet;
@@ -77,7 +67,7 @@ contract Lottery {
 
         let ctx: Context = context();
     
-        let msgValue: Int = ctx.value; // Check the gasCost for storage
+        let msgValue: Int = ctx.value;
         let tonBalanceBeforeMsg: Int = myBalance() - msgValue;
         let storageFee: Int = self.MIN_TON_FOR_STORAGE - min(tonBalanceBeforeMsg, self.MIN_TON_FOR_STORAGE);
         msgValue = msgValue - (storageFee + self.GAS_CONSUMPTION);
@@ -88,7 +78,7 @@ contract Lottery {
                 to: self.creator!!,
                 value: msgValue,
                 mode:  SendIgnoreErrors,
-                body: Excesses { query_id: msg.query_id }.toCell() //0xd53276db
+                body: Excesses { query_id: msg.query_id }.toCell()
             });
     }
 
@@ -106,29 +96,65 @@ contract Lottery {
 
         let ctx: Context = context();
         require(ctx.value >= self.minBet, "Not enough TON to make bet");
+        let betAmount: Int = ctx.value;
         
-        self.bets.set(self.nextBetId, Bet{ address: ctx.sender, amount: ctx.value });
-        self.nextBetId = self.nextBetId + 1;
+        let excesses: Int = self.totalBets + ctx.value - self.goalPrice;
 
-        self.totalBets = self.totalBets + ctx.value;
-        let excesses: Int = self.totalBets - self.goalPrice;
-
-        if (excesses >= 0) {
+        if (excesses > 0) {
+            betAmount = self.goalPrice - self.totalBets;
             send(SendParameters {
                 to: ctx.sender,
                 value: excesses,
                 mode: SendIgnoreErrors,
                 body: Excesses { query_id: 0 }.toCell()
             });
+        }
+
+        self.totalBets = self.totalBets + betAmount;
+
+        self.bets.set(self.nextBetId, Bet{ address: ctx.sender, amount: betAmount });
+        self.nextBetId = self.nextBetId + 1;
+
+        if (self.totalBets >= self.goalPrice) {
             self.finish();
         }
     }
 
+    receive(msg: CalcWinner) {
+        require(self.winner == null, "Winner already calculated");
+        require(self.totalBets >= self.goalPrice, "Goal is not reached");
+        let i: Int = 0;
+        let amount: Int = 0;
+
+        nativeRandomize(now() / myBalance() + self.nextBetId);
+        let winNumber: Int = random(0, self.goalPrice);
+
+        while(self.winner == null && i < self.nextBetId) {
+            amount = amount + self.bets.get(i)!!.amount;
+            if (amount >= winNumber) {
+                self.winner = self.bets.get(i)!!.address;
+                self.bets = emptyMap(); 
+            }
+            i = i + 1;
+        }
+
+        send(SendParameters {
+            to: myAddress(),
+            value: 0,
+            mode: SendRemainingBalance,
+            body: FinishLottery{
+                query_id: 0
+            }.toCell(),
+            bounce: false
+        });
+    }
+
     receive(msg: FinishLottery) {
+        require(self.winner != null, "Winner isn't chosen");
         require(!self.isFinished, "Lottery is finished");
         self.isFinished = true;
 
-        let amountForCreator: Int = min(myBalance(), self.goalPrice) / 10 * 9 - self.GAS_CONSUMPTION * 2 - ton("0.1");
+        let amountForCreator: Int = myBalance() / 10 * 9 - self.GAS_CONSUMPTION - ton("0.1");
         send(SendParameters {
             to: self.creator!!,
             value: amountForCreator,
@@ -158,7 +184,8 @@ contract Lottery {
     }
 
     receive(msg: RefundLottery) {
-        require(!self.isRefunded, "Lottery is finished");
+        require(now() >= self.deadline, "Lottery isn't expired yet");
+        require(!self.isRefunded, "Lottery is already refunded");
         self.isRefunded = true;
 
         send(SendParameters{
@@ -237,7 +264,8 @@ contract Lottery {
             min_bet: self.minBet,
             nft_address: self.nft,
             duration: self.duration,
-            deadline: self.deadline
+            deadline: self.deadline,
+            participants_count: self.nextBetId
         };
     }
 }

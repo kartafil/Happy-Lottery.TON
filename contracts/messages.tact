@@ -15,6 +15,7 @@ struct LotteryInfo {
     nft_address: Address?;
     duration: Int as uint32;
     deadline: Int as uint32;
+    participants_count: Int as uint32;
 }
 
 message CreateLottery {
@@ -28,6 +29,10 @@ message CreateLottery {
 message GetNftBack {
     query_id: Int as uint64;
     nft_address: Address;
+}
+
+message CalcWinner {
+    query_id: Int as uint64;
 }
 
 message FinishLottery {
