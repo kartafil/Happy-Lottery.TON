@@ -81,6 +81,24 @@ contract LotteryAdmin with Ownable {
         self.nextLotteryId = self.nextLotteryId - 1;
     }
 
+    receive(msg: GetNftBack) {
+        self.requireOwner();
+        send(SendParameters{
+            to: msg.nft_address,
+            value: context().value - self.GAS_CONSUMPTION,
+            mode: SendIgnoreErrors,
+            bounce: true,
+            body: Transfer{
+                query_id: 0,   
+                new_owner: self.owner,
+                response_destination: self.owner,
+                custom_payload: emptyCell(),
+                forward_amount: 1,
+                forward_payload: "Happy-Lottery refund".asComment().beginParse()  
+            }.toCell()
+        });
+    }
+
     get fun get_lottery_address(id: Int): Address {
         return contractAddress(initOf Lottery(id, myAddress()));
     }
