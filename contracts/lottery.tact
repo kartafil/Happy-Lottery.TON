@@ -198,7 +198,7 @@ contract Lottery {
                 response_destination: self.owner,
                 custom_payload: emptyCell(),
                 forward_amount: 1,
-                forward_payload: emptySlice() 
+                forward_payload: "Happy-Lottery refund".asComment().beginParse() 
             }.toCell()
         });
 
@@ -229,7 +229,7 @@ contract Lottery {
     }
 
     receive(msg: GetNftBack) {
-        require(self.nft == null, "You can't get NFT back if Lottery has started successfuly");
+        require(self.nft != msg.nft_address, "You can't get NFT back if Lottery has started successfuly");
         send(SendParameters{
             to: msg.nft_address,
             value: context().value - self.GAS_CONSUMPTION,
@@ -241,7 +241,7 @@ contract Lottery {
                 response_destination: self.creator!!,
                 custom_payload: emptyCell(),
                 forward_amount: 1,
-                forward_payload: emptySlice() 
+                forward_payload: "Happy-Lottery refund".asComment().beginParse()  
             }.toCell()
         });
     }
