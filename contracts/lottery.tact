@@ -57,7 +57,7 @@ contract Lottery {
         require(self.creator == null, "Lottery already created");
         require(msg.min_bet >= ton("0.2"), "Minimal bet must be greater than 0.2 ton");
         require(msg.goal_price >= ton("1"), "Minimal goal must be greater than 1 ton");
-        require(msg.duration <= 604800, "Maximal duration is 7 days");
+        require(msg.duration >= 14400 && msg.duration <= 604800, "Duration must be greater than 4 hours and less than 7 days");
         require(msg.creator_address != null, "Can't initialize lottery without creator_address");
 
         self.duration = msg.duration;
