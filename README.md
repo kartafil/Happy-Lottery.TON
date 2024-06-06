@@ -1,4 +1,4 @@
-# JackPot
+# Happy-Lottery
 
 ## Project structure
 
